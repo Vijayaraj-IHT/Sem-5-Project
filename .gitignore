@@ -1,0 +1,78 @@
+# ==============================================================================
+# Lexguard Git Exclusion & Security Policy
+# ==============================================================================
+
+# 1. Environment Secrets & Tokens
+.env
+.env.*
+*.env
+!.env.example
+!backend/.env.example
+
+# 2. Python Bytecode, Caches & Coverage
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# 3. Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# 4. Machine Learning Weights & Model Caches
+*.bin
+*.safetensors
+*.pt
+*.pth
+*.onnx
+*.h5
+.cache/
+huggingface/
+models_cache/
+
+# 5. Local Database & Persistent Storage
+*.db
+*.sqlite
+*.sqlite3
+lexguard.db
+storage/
+backend/storage/
+backend/uploads/
+uploads/
+temp/
+tmp/
+
+# 6. Frontend Artifacts & Package Dependencies
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+build/
+.vite/
+frontend/.vite/
+.npm/
+package-lock.json.bak
+
+# 7. Editor & OS Metadata
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+*.bak
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
