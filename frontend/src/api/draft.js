@@ -50,8 +50,24 @@ export async function getSessions() {
   return response.data;
 }
 
+/**
+ * Compare draft petition against specific landmark precedent using 3-layer precision comparison.
+ *
+ * @param {string} draftText - The draft petition text
+ * @param {string} caseId - The target precedent case ID
+ * @returns {Promise<Object>} 3-layer precedent comparison result
+ */
+export async function compareWithPrecedent(draftText, caseId) {
+  const response = await client.post('/draft/compare-with-precedent', {
+    draft_text: draftText,
+    case_id: caseId,
+  });
+  return response.data;
+}
+
 export default {
   analyzeDraft,
   createSession,
   getSessions,
+  compareWithPrecedent,
 };

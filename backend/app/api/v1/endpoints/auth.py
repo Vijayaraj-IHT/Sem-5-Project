@@ -37,12 +37,18 @@ def register(
             detail="A user with this email address already exists.",
         )
 
-    # Initial status based on role
-    initial_status = "active"
-    if user_in.role in ["advocate", "scholar"]:
-        initial_status = "pending_verification"
-    elif user_in.role in ["court_staff", "senior_staff"]:
-        # In production, staff is provisioned by admin; here we flag for verification
+    # Enforce that staff accounts cannot be registered publicly
+    if user_in.role in ["court_staff", "senior_staff", "staff", "junior_staff"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Judicial staff accounts cannot be registered publicly.",
+        )
+
+    # Initial status based on role:
+    # Public accounts are active immediately; advocates and scholars start pending verification
+    if user_in.role == "public":
+        initial_status = "active"
+    else:
         initial_status = "pending_verification"
 
     user = User(
@@ -80,6 +86,7 @@ def login(
     """
     Authenticates user, sets HttpOnly secure cookie and CSRF token,
     and returns token metadata.
+    Enforces active-account status for login.
     """
     user = db.query(User).filter(User.email == credentials.email).first()
     if not user or not verify_password(credentials.password, user.password_hash):
@@ -88,17 +95,23 @@ def login(
             detail="Incorrect email or password.",
         )
 
-    if user.status == "suspended":
+    # Enforce active account status
+    if user.status != "active":
+        if user.status == "suspended":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Account suspended. Please contact the court administrator.",
+            )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Account suspended. Please contact the court administrator.",
+            detail="Account is pending verification or inactive. Privileged access not permitted.",
         )
 
     access_token = create_access_token(
         subject=user.id,
         role=user.role,
         expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
-        extra_claims={"name": user.name, "status": user.status},
+        extra_claims={"name": user.name, "email": user.email, "status": user.status},
     )
 
     csrf_token = generate_csrf_token()

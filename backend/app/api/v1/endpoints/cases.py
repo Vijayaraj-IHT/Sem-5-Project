@@ -200,7 +200,7 @@ def list_cases(
     """
     query = db.query(Case)
 
-    if current_user.role not in ["court_staff", "senior_staff"]:
+    if current_user.role not in ["court_staff", "senior_staff", "staff"]:
         query = query.filter(Case.status == "published")
     elif status_filter:
         query = query.filter(Case.status == status_filter)
@@ -229,7 +229,7 @@ def get_case(
             detail="Case record not found.",
         )
 
-    if case.status != "published" and current_user.role not in ["court_staff", "senior_staff"]:
+    if case.status != "published" and current_user.role not in ["court_staff", "senior_staff", "staff"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="This case is pending staff approval and cannot be viewed yet.",
@@ -321,6 +321,15 @@ def view_case_document(
         keyword_tags=case.keyword_tags or [],
         summary=case.summary,
         outcome=case.outcome,
+        facts=case.facts,
+        issues_framed=case.issues_framed or [],
+        ratio_decidendi=case.ratio_decidendi,
+        statutory_tests=case.statutory_tests or [],
+        disposition=case.disposition or case.outcome,
+        precedents_cited=case.precedents_cited or [],
+        source_url=case.source_url,
+        source_verification_state=case.source_verification_state or "unverified",
+        precedential_status=case.precedential_status or "Precedential status not checked",
         file_hash=case.file_hash,
         redacted_file_hash=case.redacted_file_hash,
         status=case.status,
@@ -378,4 +387,53 @@ def verify_case_integrity(
         is_valid=is_valid,
         status_badge=badge,
         verified_at=datetime.now(timezone.utc),
+    )
+
+
+@router.get("/{case_id}/download")
+def download_case(
+    case_id: str,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Serves the authentic stored document file with cryptographic verification headers.
+    """
+    from fastapi.responses import FileResponse
+
+    case = db.query(Case).filter(Case.id == case_id).first()
+    if not case:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case record not found.")
+
+    if case.status != "published" and current_user.role not in ["court_staff", "senior_staff", "staff"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access restricted: This case record is not yet published.",
+        )
+
+    if not os.path.exists(case.file_path):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Physical document file missing on disk.")
+
+    log_audit_event(
+        db=db,
+        action="DOWNLOAD_DOCUMENT",
+        user_id=current_user.id,
+        case_id=case.id,
+        details=f"Downloaded case record: {case.case_no}",
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+
+    clean_case_no = "".join(c for c in case.case_no if c.isalnum() or c in ("-", "_")).strip() or "judgment"
+    filename = f"{clean_case_no}.pdf"
+
+    return FileResponse(
+        path=case.file_path,
+        filename=filename,
+        media_type="application/pdf",
+        headers={
+            "X-Lexguard-SHA256": case.file_hash,
+            "X-Lexguard-Verified": "true",
+        },
     )

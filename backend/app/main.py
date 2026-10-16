@@ -33,28 +33,100 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         return response
 
 
+class CSRFValidationMiddleware(BaseHTTPMiddleware):
+    """
+    OWASP Double-Submit Cookie CSRF Defense:
+    Validates X-CSRF-Token against lexguard_csrf_token cookie for state-changing
+    requests when session cookie is present.
+    """
+    async def dispatch(self, request: Request, call_next):
+        if request.method in ["POST", "PUT", "PATCH", "DELETE"]:
+            # If user is authenticated via cookie, require valid CSRF token header
+            if settings.COOKIE_NAME in request.cookies:
+                csrf_header = request.headers.get(settings.CSRF_HEADER_NAME)
+                expected_csrf = request.cookies.get("lexguard_csrf_token")
+                if not csrf_header or not expected_csrf or csrf_header != expected_csrf:
+                    from fastapi.responses import JSONResponse
+                    return JSONResponse(
+                        status_code=403,
+                        content={"detail": "CSRF validation failed: missing or invalid X-CSRF-Token header."}
+                    )
+        return await call_next(request)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Production security validation
+    if settings.ENVIRONMENT == "production":
+        if not settings.SECRET_KEY or "lexguard-super-secret" in settings.SECRET_KEY:
+            raise RuntimeError("CRITICAL SECURITY VIOLATION: Production SECRET_KEY must be configured via environment variable.")
+        settings.COOKIE_SECURE = True
+
     # Startup: Ensure all database tables exist
     Base.metadata.create_all(bind=engine)
 
-    # Seed initial test administrator/staff accounts if not present
-    db = SessionLocal()
-    try:
-        staff = db.query(User).filter(User.email == "staff@lexguard.gov.in").first()
-        if not staff:
-            demo_staff = User(
-                name="Chief Registrar",
-                email="staff@lexguard.gov.in",
-                password_hash=get_password_hash("Admin@Lexguard2026"),
-                role="senior_staff",
-                status="active",
-                credential_id="COURT-REG-001",
-            )
-            db.add(demo_staff)
+    # Dev-gate: Seed test/demo accounts strictly in development mode
+    if settings.ENVIRONMENT == "development":
+        db = SessionLocal()
+        try:
+            seed_data = [
+                {
+                    "name": "Chief Registrar",
+                    "email": "staff@court.gov.in",
+                    "password": "staff123",
+                    "role": "staff",
+                    "status": "active",
+                    "credential_id": "COURT-REG-001",
+                },
+                {
+                    "name": "Senior Advocate",
+                    "email": "advocate@bar.in",
+                    "password": "advocate123",
+                    "role": "advocate",
+                    "status": "active",
+                    "credential_id": "BAR-DL-2024-9912",
+                },
+                {
+                    "name": "Legal Scholar",
+                    "email": "scholar@law.edu",
+                    "password": "scholar123",
+                    "role": "scholar",
+                    "status": "active",
+                    "credential_id": "NLSIU-FAC-4012",
+                },
+                {
+                    "name": "Citizen User",
+                    "email": "public@citizen.in",
+                    "password": "public123",
+                    "role": "public",
+                    "status": "active",
+                    "credential_id": None,
+                },
+                {
+                    "name": "Chief Registrar",
+                    "email": "staff@lexguard.gov.in",
+                    "password": "Admin@Lexguard2026",
+                    "role": "senior_staff",
+                    "status": "active",
+                    "credential_id": "COURT-REG-001",
+                },
+            ]
+
+            for item in seed_data:
+                existing_user = db.query(User).filter(User.email == item["email"]).first()
+                if not existing_user:
+                    new_user = User(
+                        name=item["name"],
+                        email=item["email"],
+                        password_hash=get_password_hash(item["password"]),
+                        role=item["role"],
+                        status=item["status"],
+                        credential_id=item["credential_id"],
+                    )
+                    db.add(new_user)
             db.commit()
-    finally:
-        db.close()
+        finally:
+            db.close()
 
     yield
     # Shutdown logic if any
@@ -68,8 +140,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# 1. Attach Security Headers Middleware
+# 1. Attach Security Headers & CSRF Middleware
 app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(CSRFValidationMiddleware)
 
 # 2. Attach CORS Middleware
 app.add_middleware(

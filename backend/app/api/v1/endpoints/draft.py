@@ -11,9 +11,12 @@ from app.schemas.draft import (
     DraftAnalyzeResponse,
     DraftSessionCreate,
     DraftSessionResponse,
+    PrecedentCompareRequest,
+    PrecedentCompareResponse,
 )
 from app.services.local_llm_service import local_llm_service
 from app.services.claude_service import claude_service
+from app.services.comparator import precedent_comparator
 from app.services.audit_service import log_audit_event
 
 router = APIRouter()
@@ -109,3 +112,37 @@ def list_user_draft_sessions(
         .all()
     )
     return sessions
+
+
+@router.post("/compare-with-precedent", response_model=PrecedentCompareResponse)
+def compare_with_precedent(
+    compare_in: PrecedentCompareRequest,
+    request: Request,
+    current_user: User = Depends(require_role(["advocate", "scholar", "court_staff", "senior_staff", "staff"])),
+    db: Session = Depends(get_db),
+):
+    """
+    3-Layer Precision Precedent Comparator:
+    Layer 1: Statutory Conditions Audit (Fulfilled vs Omitted conditions in draft)
+    Layer 2: Ratio Decidendi Alignment Check
+    Layer 3: Actionable Boilerplate Legal Suggestions
+    """
+    case = db.query(Case).filter(Case.id == compare_in.case_id).first()
+    if not case:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Precedent case with ID '{compare_in.case_id}' was not found in repository."
+        )
+
+    result = precedent_comparator.compare(draft_text=compare_in.draft_text, case=case)
+
+    log_audit_event(
+        db=db,
+        action="PRECEDENT_COMPARISON",
+        user_id=current_user.id,
+        details=f"Audited draft against precedent: {case.title} ({case.case_no})",
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+
+    return result

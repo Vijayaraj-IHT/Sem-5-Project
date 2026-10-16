@@ -129,7 +129,7 @@ export default function AdminDashboardPage() {
 
   // Load initial tab data
   useEffect(() => {
-    if (['senior_staff', 'junior_staff', 'court_staff'].includes(currentRole)) {
+    if (['staff', 'senior_staff', 'junior_staff', 'court_staff'].includes(currentRole)) {
       fetchAnalytics();
       fetchQueue();
     }
@@ -210,7 +210,7 @@ export default function AdminDashboardPage() {
     );
   }
 
-  const isStaff = ['senior_staff', 'junior_staff', 'court_staff'].includes(currentRole);
+  const isStaff = ['staff', 'senior_staff', 'junior_staff', 'court_staff'].includes(currentRole);
 
   if (!isStaff) {
     return (

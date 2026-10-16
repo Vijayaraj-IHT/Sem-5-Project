@@ -32,7 +32,13 @@ const PublicLayout = ({ children }) => {
 
           <nav className="flex items-center gap-3" aria-label="Public Actions">
             <Link
-              to="/search"
+              to="/verify/public"
+              className="px-3.5 py-1.5 text-sm font-medium text-slate-300 hover:text-white rounded-md hover:bg-slate-800 transition-colors"
+            >
+              Verify Document
+            </Link>
+            <Link
+              to="/search/public"
               className="px-3.5 py-1.5 text-sm font-medium text-slate-300 hover:text-white rounded-md hover:bg-slate-800 transition-colors"
             >
               Public Search

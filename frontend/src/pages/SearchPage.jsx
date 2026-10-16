@@ -597,7 +597,7 @@ const SearchPage = () => {
                 </>
               ) : (
                 <>
-                  Found <span className="text-amber-400 font-bold">{totalCount}</span> precedent records
+                  Browse All Published Precedents (<span className="text-amber-400 font-bold">{totalCount}</span> records)
                 </>
               )}
             </h2>

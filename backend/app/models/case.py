@@ -30,6 +30,19 @@ class Case(Base):
     summary = Column(Text, nullable=True)
     outcome = Column(String(100), nullable=True)                 # Allowed, Dismissed, Partly Allowed
 
+    # Multi-Dimensional Judicial Rhetorical Structure
+    facts = Column(Text, nullable=True)                          # Factual matrix of the dispute
+    issues_framed = Column(JSON, default=list, nullable=False)   # Specific legal questions decided by the bench
+    ratio_decidendi = Column(Text, nullable=True)                # Binding legal holding and precedent rule
+    statutory_tests = Column(JSON, default=list, nullable=False) # Mandatory statutory conditions/prerequisites
+    disposition = Column(String(100), nullable=True)             # Allowed, Dismissed, Quashed, Remanded
+    precedents_cited = Column(JSON, default=list, nullable=False)# Prior landmark judgments relied upon
+
+    # Source & Precedential Status Attributes
+    source_url = Column(String(500), nullable=True)              # Official court repository URL if verified
+    source_verification_state = Column(String(50), default="unverified", nullable=True) # verified, unverified
+    precedential_status = Column(String(100), default="Precedential status not checked", nullable=True) # Good Law, Precedential status not checked
+
     # Cryptographic File Verification
     file_path = Column(String(500), nullable=False)
     file_hash = Column(String(64), index=True, nullable=False)  # SHA-256 hexadecimal digest

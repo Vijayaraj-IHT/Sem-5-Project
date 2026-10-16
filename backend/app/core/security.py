@@ -45,6 +45,7 @@ def create_access_token(
 
     payload: Dict[str, Any] = {
         "sub": str(subject),
+        "user_id": str(subject),
         "role": role,
         "iat": int(now.timestamp()),
         "exp": int(expire.timestamp()),
@@ -139,24 +140,68 @@ def get_current_user(
             detail="Authenticated user no longer exists.",
         )
 
-    if user.status == "suspended":
+    if user.status != "active":
+        if user.status == "suspended":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="This user account has been suspended.",
+            )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="This user account has been suspended.",
+            detail="Account is pending verification or inactive. Active account required.",
         )
 
     return user
 
 
+def get_optional_current_user(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """
+    Dependency that returns the active user if authenticated, or None for public requests.
+    """
+    from app.models.user import User
+
+    token = None
+    cookie_token = request.cookies.get(settings.COOKIE_NAME)
+    if cookie_token:
+        token = cookie_token
+    else:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header[7:].strip()
+
+    if not token:
+        return None
+
+    try:
+        payload = decode_access_token(token)
+        user_id = payload.get("sub")
+        if not user_id:
+            return None
+        return db.query(User).filter(User.id == user_id, User.status == "active").first()
+    except Exception:
+        return None
+
+
 def require_role(allowed_roles: List[str]):
     """
     Role-Based Access Control (RBAC) dependency factory.
-    Allowed roles: 'court_staff', 'senior_staff', 'advocate', 'scholar', 'public'.
+    Allowed roles: 'court_staff', 'senior_staff', 'staff', 'advocate', 'scholar', 'public'.
     """
+    # Expand staff aliases
+    expanded_allowed = set(allowed_roles)
+    if "staff" in expanded_allowed:
+        expanded_allowed.update(["court_staff", "senior_staff"])
+    if "court_staff" in expanded_allowed or "senior_staff" in expanded_allowed:
+        expanded_allowed.add("staff")
+
     def role_checker(
         current_user=Depends(get_current_user),
     ):
-        if current_user.role not in allowed_roles:
+        user_role = current_user.role
+        if user_role not in expanded_allowed:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Access denied: role '{current_user.role}' lacks permission for this resource.",

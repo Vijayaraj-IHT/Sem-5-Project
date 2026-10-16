@@ -234,6 +234,11 @@ class LocalLLMService:
         if "fraud" in q_lower or "cheating" in q_lower:
             issue = "Cheating and Property Dishonesty"
             sections.extend(["Section 415 IPC", "Section 420 IPC"])
+        if "murder" in q_lower or "homicide" in q_lower:
+            issue = "Offences Affecting Life / Homicide"
+            sections.extend(["Section 300 IPC", "Section 302 IPC", "Section 304 IPC"])
+        if "convict" in q_lower or "conviction" in q_lower:
+            sections.extend(["Section 374 CrPC", "Section 386 CrPC"])
 
         if not sections:
             sections = ["Relevant Statutory Provisions"]

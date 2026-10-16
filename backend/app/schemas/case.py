@@ -1,6 +1,20 @@
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 from pydantic import BaseModel, Field, ConfigDict
+
+
+class StatutoryTest(BaseModel):
+    test: str = Field(..., description="Short identifier for the legal test")
+    mandatory: bool = Field(default=True, description="Whether the requirement is mandatory")
+    condition: str = Field(..., description="Full text of the legal condition")
+    section_ref: Optional[str] = Field(default=None, description="Statutory citation")
+
+
+class PrecedentCited(BaseModel):
+    title: str
+    year: Optional[int] = None
+    citation: Optional[str] = None
+    court: Optional[str] = None
 
 
 class CaseBase(BaseModel):
@@ -15,6 +29,39 @@ class CaseBase(BaseModel):
     keyword_tags: List[str] = Field(default_factory=list)
     summary: Optional[str] = None
     outcome: Optional[str] = Field(default=None, max_length=100)
+    facts: Optional[str] = None
+    issues_framed: List[str] = Field(default_factory=list)
+    ratio_decidendi: Optional[str] = None
+    statutory_tests: List[Any] = Field(default_factory=list)
+    disposition: Optional[str] = Field(default=None, max_length=100)
+    precedents_cited: List[Any] = Field(default_factory=list)
+    source_url: Optional[str] = None
+    source_verification_state: Optional[str] = "unverified"
+    precedential_status: Optional[str] = "Precedential status not checked"
+
+
+class EnrichedCaseDetailResponse(BaseModel):
+    id: str
+    case_no: str
+    title: str
+    court: str
+    year: int
+    judge: Optional[str] = None
+    parties: Optional[str] = None
+    act_tags: List[str] = []
+    section_tags: List[str] = []
+    keyword_tags: List[str] = []
+    summary: Optional[str] = None
+    facts: Optional[str] = None
+    issues_framed: List[str] = []
+    ratio_decidendi: Optional[str] = None
+    statutory_tests: List[Dict[str, Any]] = []
+    disposition: Optional[str] = None
+    precedents_cited: List[Dict[str, Any]] = []
+    file_hash: str
+    status: str
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CaseCreate(CaseBase):

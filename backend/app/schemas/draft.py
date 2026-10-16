@@ -44,3 +44,46 @@ class DraftSessionResponse(BaseModel):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# Precedent Precision Comparison Schemas
+class PrecedentCompareRequest(BaseModel):
+    draft_text: str = Field(..., min_length=10, description="Advocate draft petition text")
+    case_id: str = Field(..., description="Target precedent case ID")
+
+
+class StatutoryTestAuditItem(BaseModel):
+    test: str
+    status: str  # "fulfilled" or "omitted"
+    matched_clause: Optional[str] = None
+    recommendation: Optional[str] = None
+
+
+class BoilerplateSuggestion(BaseModel):
+    id: str
+    title: str
+    clause_type: str  # "Ground", "Prayer", "Averment"
+    content: str
+
+
+class RatioAlignmentResult(BaseModel):
+    alignment_status: str  # "strong_alignment", "partial_alignment", "divergent"
+    alignment_score: float  # 0.0 - 100.0 percentage
+    analysis: str
+    binding_principle: str
+
+
+class PrecedentCompareResponse(BaseModel):
+    case_id: str
+    case_title: str
+    citation: Optional[str] = None
+    court: str
+    year: int
+    ratio_decidendi: str
+    statutory_audit: List[StatutoryTestAuditItem]
+    total_tests: int
+    fulfilled_count: int
+    omitted_count: int
+    compliance_percentage: float
+    ratio_alignment: RatioAlignmentResult
+    boilerplate_suggestions: List[BoilerplateSuggestion]

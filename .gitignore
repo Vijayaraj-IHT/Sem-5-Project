@@ -43,8 +43,6 @@ models_cache/
 
 # 5. Local Database & Persistent Storage
 *.db
-# Seed-corpus binaries (manifest + analysis ARE tracked; PDFs live in Drive)
-backend/seed_corpus/pdfs/
 *.sqlite
 *.sqlite3
 lexguard.db

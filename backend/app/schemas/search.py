@@ -11,7 +11,7 @@ class SearchFilters(BaseModel):
 
 
 class SearchRequest(BaseModel):
-    query: str = Field(..., min_length=2, max_length=1000)
+    query: str = Field(default="", min_length=0, max_length=1000)
     filters: Optional[SearchFilters] = None
     limit: int = Field(default=10, ge=1, le=50)
     offset: int = Field(default=0, ge=0)

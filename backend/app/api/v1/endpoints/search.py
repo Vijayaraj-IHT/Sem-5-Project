@@ -1,9 +1,9 @@
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from app.core.database import get_db
-from app.core.security import get_current_user
+from app.core.security import get_optional_current_user
 from app.models.user import User
 from app.models.case import Case
 from app.schemas.search import (
@@ -23,7 +23,7 @@ router = APIRouter()
 def search_cases(
     search_in: SearchRequest,
     request: Request,
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_optional_current_user),
     db: Session = Depends(get_db),
 ):
     """
@@ -33,6 +33,60 @@ def search_cases(
     3. Fuses vector cosine similarity (0.5), statutory section matches (0.3), and keywords (0.2).
     4. Logs search query in the immutable audit trail.
     """
+    # Fast-path for empty or short browse query (< 2 characters)
+    query_text = (search_in.query or "").strip()
+    if len(query_text) < 2:
+        query_obj = db.query(Case).filter(Case.status == "published")
+        if search_in.filters:
+            f = search_in.filters
+            if f.court:
+                query_obj = query_obj.filter(Case.court.ilike(f"%{f.court}%"))
+            if f.year_from:
+                query_obj = query_obj.filter(Case.year >= f.year_from)
+            if f.year_to:
+                query_obj = query_obj.filter(Case.year <= f.year_to)
+            if f.outcome:
+                query_obj = query_obj.filter(Case.outcome.ilike(f"%{f.outcome}%"))
+
+        total_matches = query_obj.count()
+        cases_page = (
+            query_obj.order_by(Case.created_at.desc())
+            .offset(search_in.offset)
+            .limit(search_in.limit)
+            .all()
+        )
+
+        results = [
+            SearchResultItem(
+                id=c.id,
+                case_no=c.case_no,
+                title=c.title,
+                court=c.court,
+                year=c.year,
+                matched_sections=[],
+                relevance_score=1.0,
+                outcome=c.outcome,
+                summary=c.summary,
+                file_hash=c.file_hash,
+            )
+            for c in cases_page
+        ]
+
+        log_audit_event(
+            db=db,
+            action="SEARCH_BROWSE",
+            user_id=current_user.id if current_user else None,
+            details=f"Browsed {len(results)} of {total_matches} published cases",
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
+
+        return SearchResponse(
+            total=total_matches,
+            results=results,
+            query_understanding={"sections": [], "issue": "All Published Cases", "jurisdiction": "All Courts"},
+        )
+
     # 1. AI Query Enrichment (Local Qwen/Llama or InLegalBERT NER)
     enriched = local_llm_service.enrich_query(search_in.query)
     query_sections = enriched.get("sections", [])
@@ -40,10 +94,10 @@ def search_cases(
     # 2. Vector Embedding for Query
     query_embedding = embedding_service.generate_embedding(search_in.query)
 
-    # 2. Base Query: Only published cases
+    # 3. Base Query: Only published cases
     query_obj = db.query(Case).filter(Case.status == "published")
 
-    # 3. Apply optional filters
+    # Apply optional filters
     if search_in.filters:
         f = search_in.filters
         if f.court:
@@ -123,7 +177,7 @@ def search_cases(
     log_audit_event(
         db=db,
         action="SEARCH",
-        user_id=current_user.id,
+        user_id=current_user.id if current_user else None,
         details=f"Query: '{search_in.query[:100]}' - Returned {len(paged)} of {total_matches} results",
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),

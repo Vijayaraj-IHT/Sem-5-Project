@@ -30,8 +30,8 @@ class Settings(BaseSettings):
     CSRF_HEADER_NAME: str = "X-CSRF-Token"
     CSRF_SECRET: str = "lexguard-csrf-protection-secret-key-salt"
 
-    # Database Configuration (PostgreSQL / SQLite fallback)
-    DATABASE_URL: str = "sqlite:///./lexguard.db"
+    # Database Configuration (PostgreSQL default)
+    DATABASE_URL: str = "postgresql+psycopg2://lexguard:lexguard123@localhost:5432/lexguard"
 
     # File Storage
     STORAGE_DIR: str = "./storage/cases"
@@ -53,8 +53,10 @@ class Settings(BaseSettings):
     CORS_ORIGINS: Union[List[str], str] = [
         "http://localhost:3000",
         "http://localhost:5173",
+        "http://localhost:5174",
         "http://127.0.0.1:3000",
         "http://127.0.0.1:5173",
+        "http://127.0.0.1:5174",
     ]
 
     @field_validator("CORS_ORIGINS", mode="before")

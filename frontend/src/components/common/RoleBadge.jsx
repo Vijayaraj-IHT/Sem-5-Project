@@ -6,6 +6,16 @@ const ROLE_CONFIG = {
     className: 'bg-red-100 text-red-800 border-red-200',
     dotColor: 'bg-red-500',
   },
+  staff: {
+    label: 'Court Staff',
+    className: 'bg-red-100 text-red-800 border-red-200',
+    dotColor: 'bg-red-500',
+  },
+  court_staff: {
+    label: 'Court Staff',
+    className: 'bg-red-100 text-red-800 border-red-200',
+    dotColor: 'bg-red-500',
+  },
   junior_staff: {
     label: 'Junior Staff',
     className: 'bg-orange-100 text-orange-800 border-orange-200',

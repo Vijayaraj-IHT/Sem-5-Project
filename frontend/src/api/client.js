@@ -63,6 +63,7 @@ client.interceptors.response.use(
 
       const requestUrl = error.config?.url || '';
       const isLoginRequest = requestUrl.includes('/auth/login');
+      const isSessionCheck = requestUrl.includes('/auth/me') || requestUrl.includes('/users/me');
 
       // Dispatch global auth:logout event for AuthContext & UI listeners
       if (typeof window !== 'undefined') {
@@ -75,8 +76,8 @@ client.interceptors.response.use(
           })
         );
 
-        // Redirect to /login if not already on the login route and not an active login attempt
-        if (!isLoginRequest && window.location.pathname !== '/login') {
+        // Redirect to /login if not already on the login route and not an active login attempt or session check
+        if (!isLoginRequest && !isSessionCheck && window.location.pathname !== '/login') {
           window.location.href = '/login';
         }
       }

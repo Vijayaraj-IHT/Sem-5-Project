@@ -14,6 +14,8 @@ import {
   Shield,
   FileText,
   Bookmark,
+  ShieldCheck,
+  GitCompare,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import RoleBadge from '../common/RoleBadge';
@@ -21,29 +23,53 @@ import RoleBadge from '../common/RoleBadge';
 const NAV_ITEMS_BY_ROLE = {
   senior_staff: [
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-    { label: 'Cases', path: '/cases', icon: FileText },
-    { label: 'Upload', path: '/upload', icon: FileUp },
-    { label: 'Approval Queue', path: '/approval-queue', icon: ClipboardCheck },
-    { label: 'Audit Logs', path: '/audit-logs', icon: Shield },
+    { label: 'Case Search', path: '/search', icon: Search },
+    { label: 'Verify', path: '/verify', icon: ShieldCheck },
+    { label: 'Comparator', path: '/compare', icon: GitCompare },
+    { label: 'Upload Case', path: '/upload', icon: FileUp },
+    { label: 'Bookmarks', path: '/bookmarks', icon: Bookmark },
+  ],
+  staff: [
+    { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { label: 'Case Search', path: '/search', icon: Search },
+    { label: 'Verify', path: '/verify', icon: ShieldCheck },
+    { label: 'Comparator', path: '/compare', icon: GitCompare },
+    { label: 'Upload Case', path: '/upload', icon: FileUp },
+    { label: 'Bookmarks', path: '/bookmarks', icon: Bookmark },
+  ],
+  court_staff: [
+    { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { label: 'Case Search', path: '/search', icon: Search },
+    { label: 'Verify', path: '/verify', icon: ShieldCheck },
+    { label: 'Comparator', path: '/compare', icon: GitCompare },
+    { label: 'Upload Case', path: '/upload', icon: FileUp },
+    { label: 'Bookmarks', path: '/bookmarks', icon: Bookmark },
   ],
   junior_staff: [
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-    { label: 'Cases', path: '/cases', icon: FileText },
-    { label: 'Upload', path: '/upload', icon: FileUp },
-    { label: 'Approval Queue', path: '/approval-queue', icon: ClipboardCheck },
-    { label: 'Audit Logs', path: '/audit-logs', icon: Shield },
+    { label: 'Case Search', path: '/search', icon: Search },
+    { label: 'Verify', path: '/verify', icon: ShieldCheck },
+    { label: 'Comparator', path: '/compare', icon: GitCompare },
+    { label: 'Upload Case', path: '/upload', icon: FileUp },
+    { label: 'Bookmarks', path: '/bookmarks', icon: Bookmark },
   ],
   advocate: [
     { label: 'Search', path: '/search', icon: Search },
+    { label: 'Verify', path: '/verify', icon: ShieldCheck },
+    { label: 'Comparator', path: '/compare', icon: GitCompare },
     { label: 'My Drafts', path: '/drafts', icon: FileText },
     { label: 'Bookmarks', path: '/bookmarks', icon: Bookmark },
   ],
   scholar: [
     { label: 'Search', path: '/search', icon: Search },
+    { label: 'Verify', path: '/verify', icon: ShieldCheck },
+    { label: 'Comparator', path: '/compare', icon: GitCompare },
     { label: 'Bookmarks', path: '/bookmarks', icon: Bookmark },
   ],
   public: [
     { label: 'Search', path: '/search', icon: Search },
+    { label: 'Verify', path: '/verify', icon: ShieldCheck },
+    { label: 'Comparator', path: '/compare', icon: GitCompare },
   ],
 };
 

@@ -19,6 +19,12 @@ import {
   BookOpen,
   FileCheck2,
   Lock,
+  Sparkles,
+  CheckCircle2,
+  Gavel,
+  HelpCircle,
+  Layers,
+  ArrowRight,
 } from 'lucide-react';
 import IntegrityBadge from '../components/common/IntegrityBadge';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -42,6 +48,7 @@ const CaseViewerPage = () => {
   const [loading, setLoading] = useState(true);
   const [verifying, setVerifying] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
+  const [activeTab, setActiveTab] = useState('structure'); // 'structure' or 'document'
 
   // Citation & Copy States
   const [citationCopied, setCitationCopied] = useState(false);
@@ -212,39 +219,12 @@ const CaseViewerPage = () => {
     });
   };
 
-  // Download judgment file
+  // Download authentic judgment file
   const handleDownloadDocument = () => {
-    if (!caseData) return;
-    // If backend direct download is available or create a formatted text export
-    const content = `LEXGUARD JUDICIAL CASE ARCHIVE
-=====================================================
-CASE TITLE: ${caseData.title}
-CASE NO:    ${caseData.case_no || 'N/A'}
-COURT:      ${caseData.court || 'N/A'}
-YEAR:       ${caseData.year || 'N/A'}
-JUDGE:      ${caseData.judge || 'N/A'}
-PARTIES:    ${caseData.parties || 'N/A'}
-OUTCOME:    ${caseData.outcome || 'N/A'}
-SHA-256:    ${caseData.file_hash || 'N/A'}
-=====================================================
-
-SUMMARY & FINDINGS:
-${caseData.summary || 'Summary record archived in repository.'}
-
-=====================================================
-Cryptographically signed and archived via Lexguard Platform.
-`;
-
-    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${(caseData.case_no || 'case').replace(/[^a-zA-Z0-9_-]/g, '_')}_lexguard_verified.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    showToast('Verified legal record downloaded.');
+    if (!caseData?.id) return;
+    const downloadUrl = `/api/v1/cases/${caseData.id}/download`;
+    window.open(downloadUrl, '_blank');
+    showToast('Downloading cryptographically verified legal record...');
   };
 
   // Integrity Status Computed
@@ -557,87 +537,291 @@ Cryptographically signed and archived via Lexguard Platform.
           </section>
         )}
 
-        {/* Document Viewer Section */}
-        <section className="mt-8 bg-white text-slate-900 border border-slate-200 rounded-2xl shadow-xl overflow-hidden">
-          {/* Document Header Ribbon */}
-          <div className="bg-slate-100 border-b border-slate-200 px-6 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <FileText className="w-5 h-5 text-slate-700" />
-              <span className="text-sm font-bold text-slate-800 font-serif">
-                Judicial Judgment & Reasoning Record
+        {/* Navigation Tabs for Judicial Structure vs Raw Judgment */}
+        <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setActiveTab('structure')}
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                activeTab === 'structure'
+                  ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30 shadow-xs'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+              }`}
+            >
+              <Scale className="w-4 h-4 text-amber-400" />
+              <span>Multi-Dimensional Judicial Structure</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-mono">
+                5 Rhetorical Roles
               </span>
-            </div>
-            <div className="text-xs font-mono text-slate-500">
-              Verified Copy &bull; Lexguard Secure Storage
-            </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('document')}
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                activeTab === 'document'
+                  ? 'bg-slate-800 text-white border border-slate-700 shadow-xs'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+              }`}
+            >
+              <FileText className="w-4 h-4 text-slate-400" />
+              <span>Authentic Record & PDF</span>
+            </button>
           </div>
 
-          {/* Document Content with legal-text styling */}
-          <div className="p-8 sm:p-12 space-y-6">
-            {/* Case Summary / Ratio Decidendi */}
-            {caseData.summary && (
-              <div className="bg-slate-50 border-l-4 border-amber-500 p-5 rounded-r-lg mb-8">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 font-sans">
-                  Executive Legal Summary & Ratio Decidendi
-                </h4>
-                <p className="legal-text text-base sm:text-lg text-slate-800 italic">
-                  &ldquo;{caseData.summary}&rdquo;
-                </p>
-              </div>
-            )}
+          {/* Action Link to Draft Assistant */}
+          {isAuthenticated && (
+            <Link
+              to={`/drafts?caseId=${caseData.id}`}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25 transition-colors"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Compare with Petition Draft</span>
+              <ArrowRight className="w-3 h-3" />
+            </Link>
+          )}
+        </div>
 
-            {/* Structured Document Body */}
-            <div className="legal-text text-base sm:text-lg text-slate-900 leading-relaxed space-y-6">
-              <div>
-                <h3 className="font-serif font-bold text-xl text-slate-950 mb-3 border-b border-slate-200 pb-2">
-                  1. Facts and Procedural History
-                </h3>
-                <p className="mb-4">
-                  This matter came before the {caseData.court || 'Court'} for final adjudication in the year{' '}
-                  {caseData.year || 'recorded'}. The proceedings concern matters registered under Case No.{' '}
-                  <strong>{caseData.case_no || 'indexed in docket'}</strong>, involving parties captioned as{' '}
-                  <em>{caseData.parties || 'the respective litigants'}</em>.
-                </p>
-                <p>
-                  Having considered the pleadings filed on record and having heard the arguments addressed by the learned
-                  counsel appearing for the respective parties, this Court proceeds to pronounce its judgment.
-                </p>
+        {/* Tab 1: Multi-Dimensional Judicial Structure */}
+        {activeTab === 'structure' && (
+          <div className="mt-6 space-y-6">
+            {/* 1. Binding Ratio Decidendi (Emerald Highlight Card) */}
+            <section className="bg-emerald-950/20 border-2 border-emerald-500/70 rounded-2xl p-6 sm:p-8 shadow-xl relative overflow-hidden backdrop-blur-xs">
+              <div className="absolute top-0 right-0 px-4 py-1.5 bg-emerald-500/20 border-b border-l border-emerald-500/40 rounded-bl-xl text-[11px] font-bold text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
+                <Gavel className="w-3.5 h-3.5" />
+                <span>Binding Ratio Decidendi</span>
               </div>
-
-              <div>
-                <h3 className="font-serif font-bold text-xl text-slate-950 mb-3 border-b border-slate-200 pb-2">
-                  2. Questions of Law & Statutory Construction
-                </h3>
-                <p className="mb-4">
-                  The primary statutory questions presented for determination arise under the provisions of{' '}
-                  {actTags.length > 0 ? actTags.join(', ') : 'the relevant statutes'}
-                  {sectionTags.length > 0 && (
-                    <span>, specifically with respect to statutory interpretation of Section {sectionTags.join(', ')}</span>
-                  )}
-                  .
-                </p>
-                <blockquote className="border-l-2 border-slate-300 pl-4 my-4 italic text-slate-700">
-                  &ldquo;It is settled jurisprudence that statutory enactments must be construed according to the
-                  intention of the legislature and consistent with the established precedents of the superior courts.&rdquo;
-                </blockquote>
-              </div>
-
-              <div>
-                <h3 className="font-serif font-bold text-xl text-slate-950 mb-3 border-b border-slate-200 pb-2">
-                  3. Disposition and Final Order
-                </h3>
-                <p className="mb-4">
-                  Upon thorough examination of the judicial record and evidentiary material presented:
-                </p>
-                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 font-serif text-slate-900">
-                  <strong>ORDER:</strong> The petition / appeal stands{' '}
-                  <span className="font-bold underline uppercase">{caseData.outcome || 'DISPOSED OF'}</span> in terms of
-                  the reasoning recorded hereinabove. All pending applications, if any, stand closed accordingly.
+              <div className="flex items-start gap-3.5 mb-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center shrink-0 text-emerald-400">
+                  <Scale className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-emerald-200">
+                    Core Judicial Holding & Precedent Rule
+                  </h3>
+                  <p className="text-xs text-emerald-400/80">
+                    Binding rule of law established by the {caseData.court}
+                  </p>
                 </div>
               </div>
+              <p className="mt-4 text-sm sm:text-base text-emerald-100 font-serif leading-relaxed italic border-l-4 border-emerald-500 pl-4 py-1">
+                &ldquo;{caseData.ratio_decidendi || caseData.summary}&rdquo;
+              </p>
+            </section>
+
+            {/* 2. Grid of Facts and Issues Framed */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Factual Matrix */}
+              <section className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-md flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center gap-2.5 mb-3">
+                    <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+                      <FileText className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-white">📜 Factual Matrix</h4>
+                      <p className="text-[11px] text-slate-400">Context of the dispute & background</p>
+                    </div>
+                  </div>
+                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans">
+                    {caseData.facts ||
+                      `The dispute in ${caseData.title} was adjudicated before the ${caseData.court}. It concerns claims relating to ${(caseData.act_tags || []).join(', ') || 'statutory provisions'}. ${caseData.summary}`}
+                  </p>
+                </div>
+              </section>
+
+              {/* Core Issues Framed */}
+              <section className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-md flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center gap-2.5 mb-3">
+                    <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+                      <HelpCircle className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-white">⚖️ Core Issues Framed</h4>
+                      <p className="text-[11px] text-slate-400">Legal questions decided by the bench</p>
+                    </div>
+                  </div>
+                  {Array.isArray(caseData.issues_framed) && caseData.issues_framed.length > 0 ? (
+                    <ul className="space-y-2.5 mt-2">
+                      {caseData.issues_framed.map((issue, idx) => (
+                        <li key={`issue-${idx}`} className="flex items-start gap-2.5 text-xs text-slate-300">
+                          <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-300 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">
+                            {idx + 1}
+                          </span>
+                          <span className="leading-snug">{issue}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-xs text-slate-400 italic">
+                      Standard statutory interpretation and compliance questions decided by the bench.
+                    </p>
+                  )}
+                </div>
+              </section>
+            </div>
+
+            {/* 3. Statutory Prerequisites & Mandatory Tests */}
+            <section className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-md">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
+                    <CheckCircle2 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-white">📋 Statutory Prerequisites & Tests</h4>
+                    <p className="text-[11px] text-slate-400">
+                      Mandatory conditions formulated by the court
+                    </p>
+                  </div>
+                </div>
+                <span className="text-xs px-2.5 py-1 rounded-md bg-purple-500/15 text-purple-300 border border-purple-500/30 font-medium">
+                  {(caseData.statutory_tests || []).length} Mandatory Conditions
+                </span>
+              </div>
+
+              {Array.isArray(caseData.statutory_tests) && caseData.statutory_tests.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                  {caseData.statutory_tests.map((test, idx) => (
+                    <div
+                      key={`test-${idx}`}
+                      className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 flex items-start gap-3 hover:border-slate-700 transition-colors"
+                    >
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                          Test #{idx + 1}
+                        </span>
+                        <p className="text-xs text-slate-200 leading-relaxed">{test}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-400 italic">
+                  Adherence to procedural fairness, limitation, and statutory prerequisites affirmed by the court.
+                </p>
+              )}
+            </section>
+
+            {/* 4. Precedents Cited & Final Disposition */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Disposition Badge */}
+              <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-md">
+                <span className="text-xs font-semibold text-slate-400 block mb-2 uppercase tracking-wider">
+                  Final Disposition
+                </span>
+                <div className="flex items-center gap-2">
+                  <Scale className="w-5 h-5 text-amber-400" />
+                  <span className="text-base font-bold text-white capitalize">
+                    {caseData.disposition || caseData.outcome || 'Decided'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400 mt-2">
+                  Binding decision declared under the appellate jurisdiction of the {caseData.court}.
+                </p>
+              </section>
+
+              {/* Precedents Cited */}
+              <section className="md:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-md">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                    🔗 Landmark Precedents Cited
+                  </span>
+                  <BookOpen className="w-4 h-4 text-slate-500" />
+                </div>
+                {Array.isArray(caseData.precedents_cited) && caseData.precedents_cited.length > 0 ? (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {caseData.precedents_cited.map((prec, idx) => (
+                      <span
+                        key={`prec-${idx}`}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-950 border border-slate-800 text-slate-200"
+                      >
+                        <BookOpen className="w-3 h-3 text-amber-400" />
+                        <span>{prec}</span>
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-400 italic">
+                    Fundamental constitutional and statutory jurisprudence of the Supreme Court of India.
+                  </p>
+                )}
+              </section>
             </div>
           </div>
-        </section>
+        )}
+
+        {/* Tab 2: Raw Document Viewer Section */}
+        {activeTab === 'document' && (
+          <section className="mt-6 bg-white text-slate-900 border border-slate-200 rounded-2xl shadow-xl overflow-hidden">
+            {/* Document Header Ribbon */}
+            <div className="bg-slate-100 border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-slate-700" />
+                <span className="text-sm font-bold text-slate-800 font-serif">
+                  Judicial Judgment & Reasoning Record
+                </span>
+              </div>
+              <div className="text-xs font-mono text-slate-500">
+                Verified Copy &bull; Lexguard Secure Storage
+              </div>
+            </div>
+
+            {/* Document Content with legal-text styling */}
+            <div className="p-8 sm:p-12 space-y-6">
+              {/* Case Summary */}
+              {caseData.summary ? (
+                <div className="bg-slate-50 border-l-4 border-amber-500 p-6 rounded-r-xl">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 font-sans">
+                    Official Legal Summary & Ratio Decidendi
+                  </h4>
+                  <p className="legal-text text-base sm:text-lg text-slate-800 leading-relaxed italic">
+                    &ldquo;{caseData.summary}&rdquo;
+                  </p>
+                </div>
+              ) : null}
+
+              {/* Case Parties & Bench Record */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-6 rounded-xl border border-slate-100 text-sm">
+                <div>
+                  <span className="font-semibold text-slate-600 block text-xs uppercase">Parties:</span>
+                  <span className="text-slate-900 font-medium">{caseData.parties || 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="font-semibold text-slate-600 block text-xs uppercase">Coram / Bench:</span>
+                  <span className="text-slate-900 font-medium">{caseData.judge || 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="font-semibold text-slate-600 block text-xs uppercase">Judicial Outcome:</span>
+                  <span className="text-slate-900 font-bold uppercase">{caseData.outcome || 'Decided'}</span>
+                </div>
+                <div>
+                  <span className="font-semibold text-slate-600 block text-xs uppercase">Repository Record ID:</span>
+                  <span className="text-slate-700 font-mono text-xs">{caseData.id}</span>
+                </div>
+              </div>
+
+              {/* Download Official Document Card */}
+              <div className="text-center py-10 px-6 bg-slate-50/60 border border-dashed border-slate-300 rounded-xl">
+                <FileText className="w-10 h-10 mx-auto mb-3 text-slate-400" />
+                <h4 className="font-semibold text-slate-800 mb-1">Authentic Court Judgment Record</h4>
+                <p className="text-sm text-slate-500 mb-4 max-w-md mx-auto">
+                  The complete judicial document is stored with real-time SHA-256 integrity verification.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleDownloadDocument}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 transition-colors shadow-sm cursor-pointer"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Download Verified PDF / Record</span>
+                </button>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* Cryptographic File Hash & Tamper-Evident Seal Display */}
         <footer className="mt-8 bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-lg">

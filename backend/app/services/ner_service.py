@@ -36,7 +36,8 @@ LEGAL_KEYWORDS = [
     "anticipatory bail", "regular bail", "bail", "quashing", "prima facie",
     "mens rea", "parity", "custodial interrogation", "habeas corpus",
     "mandamus", "certiorari", "injunction", "stay of arrest", "charge sheet",
-    "prolonged incarceration", "speedy trial", "confession", "admissibility"
+    "prolonged incarceration", "speedy trial", "confession", "admissibility",
+    "murder", "culpable homicide", "conviction", "homicide", "death penalty", "section 302"
 ]
 
 
