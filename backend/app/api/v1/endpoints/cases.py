@@ -303,11 +303,6 @@ def view_case_document(
         user_agent=request.headers.get("user-agent"),
     )
 
-    # Return redacted path for scholars/advocates if available
-    display_path = case.file_path
-    if current_user.role in ["scholar", "public"] and case.redacted_file_path:
-        display_path = case.redacted_file_path
-
     response_data = CaseDetailResponse(
         id=case.id,
         case_no=case.case_no,
@@ -338,8 +333,6 @@ def view_case_document(
         approved_at=case.approved_at,
         created_at=case.created_at,
         updated_at=case.updated_at,
-        file_path=display_path,
-        redacted_file_path=case.redacted_file_path,
         integrity_status=integrity_status,
         full_text=case.full_text,
         page_count=case.page_count or 1,
@@ -428,12 +421,18 @@ def download_case(
     )
 
     clean_case_no = "".join(c for c in case.case_no if c.isalnum() or c in ("-", "_")).strip() or "judgment"
-    filename = f"{clean_case_no}.pdf"
+    file_ext = os.path.splitext(case.file_path)[1].lower()
+    if file_ext == ".docx":
+        filename = f"{clean_case_no}.docx"
+        media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    else:
+        filename = f"{clean_case_no}.pdf"
+        media_type = "application/pdf"
 
     return FileResponse(
         path=case.file_path,
         filename=filename,
-        media_type="application/pdf",
+        media_type=media_type,
         headers={
             "X-Lexguard-SHA256": case.file_hash,
             "X-Lexguard-Verified": "true",

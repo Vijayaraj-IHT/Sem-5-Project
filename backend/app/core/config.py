@@ -1,6 +1,6 @@
 from typing import List, Union, Optional
 import json
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -20,12 +20,12 @@ class Settings(BaseSettings):
     # Cryptography & JWT Security
     SECRET_KEY: str = "lexguard-super-secret-jwt-key-2026-production-ready-32-chars-min"
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 480  # 8 hours
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60  # 60 minutes (1 hour)
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # Cookie & CSRF Protection
     COOKIE_NAME: str = "lexguard_access_token"
-    COOKIE_SECURE: bool = False  # Set to True when served over HTTPS
+    COOKIE_SECURE: bool = False  # Set to True when served over HTTPS (enforced outside development)
     COOKIE_SAMESITE: str = "lax"
     CSRF_HEADER_NAME: str = "X-CSRF-Token"
     CSRF_SECRET: str = "lexguard-csrf-protection-secret-key-salt"
@@ -68,5 +68,22 @@ class Settings(BaseSettings):
             return json.loads(v)
         return v
 
+    @model_validator(mode="after")
+    def validate_production_security(self):
+        default_secret = "lexguard-super-secret-jwt-key-2026-production-ready-32-chars-min"
+        if self.ENVIRONMENT != "development":
+            if self.SECRET_KEY == default_secret or len(self.SECRET_KEY) < 32:
+                raise ValueError(
+                    "Production security violation: SECRET_KEY must be set to a secure, "
+                    "non-default string of at least 32 characters in production."
+                )
+            if not self.COOKIE_SECURE:
+                raise ValueError(
+                    "Production security violation: COOKIE_SECURE must be True outside development "
+                    "to ensure auth cookies are only transmitted over HTTPS."
+                )
+        return self
+
 
 settings = Settings()
+

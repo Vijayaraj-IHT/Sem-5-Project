@@ -87,8 +87,6 @@ class CaseResponse(CaseBase):
 
 
 class CaseDetailResponse(CaseResponse):
-    file_path: str
-    redacted_file_path: Optional[str] = None
     integrity_status: str = "verified"  # verified, tampered, pending_check
 
 

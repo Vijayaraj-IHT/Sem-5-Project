@@ -193,8 +193,8 @@ def require_role(allowed_roles: List[str]):
     # Expand staff aliases
     expanded_allowed = set(allowed_roles)
     if "staff" in expanded_allowed:
-        expanded_allowed.update(["court_staff", "senior_staff"])
-    if "court_staff" in expanded_allowed or "senior_staff" in expanded_allowed:
+        expanded_allowed.update(["court_staff", "senior_staff", "junior_staff"])
+    if any(r in expanded_allowed for r in ["court_staff", "senior_staff", "junior_staff"]):
         expanded_allowed.add("staff")
 
     def role_checker(

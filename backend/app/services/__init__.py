@@ -12,6 +12,7 @@ from app.services.embedding_service import embedding_service
 from app.services.ner_service import ner_service
 from app.services.local_llm_service import local_llm_service
 from app.services.claude_service import claude_service
+from app.services.extraction_service import ExtractionService
 
 __all__ = [
     "compute_sha256",
@@ -26,4 +27,6 @@ __all__ = [
     "ner_service",
     "local_llm_service",
     "claude_service",
+    "ExtractionService",
 ]
+
