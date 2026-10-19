@@ -34,6 +34,24 @@ export async function uploadCase(formData) {
 }
 
 /**
+ * Upload a raw PDF court document for automated multi-pass AI extraction.
+ *
+ * @param {File} file - PDF court judgment file
+ * @returns {Promise<Object>} Extracted metadata with confidence scores
+ */
+export async function uploadCaseAuto(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await client.post('/cases/upload-auto', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return response.data;
+}
+
+
+/**
  * Fetch a list of cases filtered by parameters (court, year, status_filter, skip, limit).
  *
  * @param {Object} [params={}] - Query parameters { court, year, status_filter, skip, limit }

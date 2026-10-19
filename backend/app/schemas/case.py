@@ -40,6 +40,8 @@ class CaseBase(BaseModel):
     source_url: Optional[str] = None
     source_verification_state: Optional[str] = "unverified"
     precedential_status: Optional[str] = "Precedential status not checked"
+    auto_extracted: bool = False
+
 
 
 class EnrichedCaseDetailResponse(BaseModel):
@@ -100,5 +102,6 @@ class CaseVerificationResponse(BaseModel):
 
 
 class CaseStatusUpdate(BaseModel):
-    status: str = Field(..., pattern="^(published|rejected|quarantined)$")
+    status: str = Field(..., pattern="^(pending_review|pending_approval|published|rejected|quarantined)$")
     review_note: Optional[str] = Field(default=None, max_length=1000)
+

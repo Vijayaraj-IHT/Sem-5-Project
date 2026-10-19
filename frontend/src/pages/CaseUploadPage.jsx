@@ -16,10 +16,13 @@ import {
   ExternalLink,
   ArrowRight,
   ShieldAlert,
+  Sparkles,
 } from 'lucide-react';
 import { uploadCase } from '../api/cases';
 import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import AutoExtractReview from '../components/upload/AutoExtractReview';
+
 
 const COURTS = [
   'Supreme Court of India',
@@ -38,7 +41,11 @@ export default function CaseUploadPage() {
   const { user, role, loading: authLoading } = useAuth();
   const currentRole = role || user?.role || 'public';
 
+  // Upload Mode (AI Extraction vs Manual Entry)
+  const [activeTab, setActiveTab] = useState('auto'); // 'auto' | 'manual'
+
   // Form Fields
+
   const [title, setTitle] = useState('');
   const [caseNo, setCaseNo] = useState('');
   const [court, setCourt] = useState(COURTS[0]);
@@ -246,7 +253,44 @@ export default function CaseUploadPage() {
         </Link>
       </div>
 
-      {/* Success Banner */}
+      {/* Upload Mode Selector */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 pb-3">
+        <button
+          type="button"
+          onClick={() => setActiveTab('auto')}
+          className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+            activeTab === 'auto'
+              ? 'bg-amber-400 text-slate-950 font-bold shadow-md'
+              : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+          }`}
+        >
+          <Sparkles className="w-4 h-4" />
+          <span>AI-Assisted Automated Extraction (PDF)</span>
+          <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-slate-950/20 text-slate-900 font-mono font-bold">
+            3-Pass Pipeline
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('manual')}
+          className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+            activeTab === 'manual'
+              ? 'bg-amber-400 text-slate-950 font-bold shadow-md'
+              : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+          }`}
+        >
+          <FileText className="w-4 h-4" />
+          <span>Manual Metadata Form</span>
+        </button>
+      </div>
+
+      {activeTab === 'auto' ? (
+        <AutoExtractReview />
+      ) : (
+        <>
+          {/* Success Banner */}
+
       {successData && (
         <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-6 shadow-md animate-fade-in text-xs space-y-3">
           <div className="flex items-center gap-3 text-emerald-400 font-bold text-sm">
@@ -550,6 +594,9 @@ export default function CaseUploadPage() {
           </button>
         </div>
       </form>
+        </>
+      )}
     </div>
   );
 }
+

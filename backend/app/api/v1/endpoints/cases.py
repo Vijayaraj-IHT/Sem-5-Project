@@ -183,7 +183,163 @@ async def upload_case(
     return new_case
 
 
+@router.post("/upload-auto", status_code=status.HTTP_201_CREATED)
+async def upload_case_auto(
+    file: UploadFile = File(...),
+    request: Request = None,
+    current_user: User = Depends(require_role(["court_staff", "senior_staff", "staff"])),
+    db: Session = Depends(get_db),
+):
+    """
+    Automated Court Document Ingestion Endpoint:
+    1. Accepts raw PDF court judgment/petition documents only.
+    2. Computes SHA-256 digest and verifies duplicate prevention.
+    3. Persists document under secure UUID filename.
+    4. Executes 3-pass extraction pipeline (Pass 1: Regex layout, Pass 2: InLegalBERT NER, Pass 3: Ratio/Summary).
+    5. Saves Case record in 'pending_review' state with auto_extracted=True.
+    6. Returns structured extracted fields + field-level confidence indicators for staff review.
+    """
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    if ext != ".pdf":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Automated extraction currently requires official PDF court documents. Please use manual upload for other formats.",
+        )
+
+    file_bytes = await file.read()
+    if len(file_bytes) > MAX_FILE_SIZE_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="File size exceeds the 20MB limit.",
+        )
+
+    file_hash = compute_sha256(file_bytes)
+
+    # Check for existing duplicate document
+    duplicate = db.query(Case).filter(Case.file_hash == file_hash).first()
+    if duplicate:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"This document is already registered in LexGuard under Case No: {duplicate.case_no} (Status: {duplicate.status}).",
+        )
+
+    # Store file securely
+    os.makedirs(settings.STORAGE_DIR, exist_ok=True)
+    safe_filename = f"{uuid.uuid4()}{ext}"
+    safe_path = os.path.join(settings.STORAGE_DIR, safe_filename)
+
+    with open(safe_path, "wb") as f:
+        f.write(file_bytes)
+
+    # Run Multi-Pass Extraction Pipeline
+    from app.services.extraction_service import ExtractionService
+    try:
+        extracted = ExtractionService.extract_from_pdf(safe_path, extract_passes=[1, 2, 3])
+    except Exception as e:
+        logger.error(f"Extraction pipeline error on {file.filename}: {e}")
+        extracted = {
+            "case_no": "Pending Staff Review",
+            "title": f"Document {os.path.basename(file.filename or 'judgment.pdf')}",
+            "court": "High Court",
+            "year": datetime.now().year,
+            "judge": None,
+            "parties": None,
+            "act_tags": [],
+            "section_tags": [],
+            "keyword_tags": [],
+            "summary": "Extraction encountered format irregularities; manual review required.",
+            "outcome": "Pending",
+            "facts": None,
+            "ratio_decidendi": None,
+            "full_text": None,
+            "page_count": 1,
+            "source_url": None,
+            "confidence_scores": {},
+            "overall_confidence": 0.3,
+        }
+
+    # Generate 384-dimensional dense vector embeddings
+    text_corpus = f"{extracted.get('title', '')}. {extracted.get('summary', '')}. {' '.join(extracted.get('act_tags', []))} {' '.join(extracted.get('section_tags', []))}"
+    case_embedding = None
+    try:
+        from app.services.ai_api_service import ai_api_service
+        vecs = ai_api_service.generate_embeddings([text_corpus])
+        if vecs and len(vecs) > 0:
+            case_embedding = vecs[0]
+    except Exception:
+        case_embedding = embedding_service.generate_embedding(text_corpus)
+
+    # Create Case record with status='pending_review'
+    new_case = Case(
+        case_no=extracted.get("case_no", "Pending Staff Review")[:100],
+        title=extracted.get("title", f"Document {os.path.basename(file.filename or 'judgment.pdf')}")[:300],
+        court=extracted.get("court", "High Court")[:150],
+        year=extracted.get("year", datetime.now().year),
+        judge=extracted.get("judge"),
+        parties=extracted.get("parties"),
+        act_tags=extracted.get("act_tags") or [],
+        section_tags=extracted.get("section_tags") or [],
+        keyword_tags=extracted.get("keyword_tags") or [],
+        summary=extracted.get("summary"),
+        outcome=extracted.get("outcome"),
+        facts=extracted.get("prayer") or extracted.get("facts"),
+        ratio_decidendi=extracted.get("ratio_decidendi"),
+        disposition=extracted.get("disposition") or extracted.get("outcome"),
+        full_text=extracted.get("full_text"),
+        page_count=extracted.get("page_count", 1),
+        source_url=extracted.get("source_url"),
+        source_verification_state=extracted.get("source_verification_state", "unverified"),
+        precedential_status=extracted.get("precedential_status", "Precedential status not checked"),
+        file_path=safe_path,
+        file_hash=file_hash,
+        embedding=case_embedding,
+        auto_extracted=True,
+        status="pending_review",
+        uploaded_by_id=current_user.id,
+    )
+    db.add(new_case)
+    db.commit()
+    db.refresh(new_case)
+
+    # Track Version 1
+    version_entry = DocumentVersion(
+        case_id=new_case.id,
+        version_no=1,
+        file_path=safe_path,
+        file_hash=file_hash,
+        change_summary="Automated extraction and initial ingestion",
+        changed_by_id=current_user.id,
+    )
+    db.add(version_entry)
+    db.commit()
+
+    # Log immutable audit event
+    log_audit_event(
+        db=db,
+        action="AUTO_UPLOAD_DOCUMENT",
+        user_id=current_user.id,
+        case_id=new_case.id,
+        details=f"Automated PDF extraction completed for {new_case.case_no} (Overall Confidence: {extracted.get('overall_confidence', 0.5)})",
+        ip_address=request.client.host if request and request.client else None,
+        user_agent=request.headers.get("user-agent") if request else None,
+    )
+
+    return {
+        "case_id": new_case.id,
+        "case_no": new_case.case_no,
+        "title": new_case.title,
+        "status": new_case.status,
+        "file_hash": new_case.file_hash,
+        "auto_extracted": True,
+        "extracted_data": extracted,
+        "confidence_scores": extracted.get("confidence_scores", {}),
+        "overall_confidence": extracted.get("overall_confidence", 0.5),
+        "message": "Automated PDF extraction complete. Pre-filled metadata is ready for human review.",
+    }
+
+
 @router.get("/", response_model=List[CaseResponse])
+
 def list_cases(
     court: Optional[str] = Query(None),
     year: Optional[int] = Query(None),

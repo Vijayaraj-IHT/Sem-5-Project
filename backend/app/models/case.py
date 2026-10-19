@@ -1,8 +1,9 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Integer, Text, JSON, DateTime, ForeignKey
+from sqlalchemy import Column, String, Integer, Text, JSON, DateTime, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from app.core.database import Base
+
 
 # Support pgvector when on PostgreSQL with extension installed, fallback to JSON
 try:
@@ -57,8 +58,10 @@ class Case(Base):
     embedding = Column(VectorColumnType, nullable=True)
 
     # Workflow & Approval Status
-    status = Column(String(50), default="pending_approval", index=True, nullable=False)  # pending_approval, published, rejected, quarantined
+    status = Column(String(50), default="pending_approval", index=True, nullable=False)  # pending_review, pending_approval, published, rejected, quarantined
+    auto_extracted = Column(Boolean, default=False, nullable=False)
     uploaded_by_id = Column(String(36), ForeignKey("users.id"), nullable=False)
+
     approved_by_id = Column(String(36), ForeignKey("users.id"), nullable=True)
     approved_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
