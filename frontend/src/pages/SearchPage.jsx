@@ -773,6 +773,18 @@ const SearchPage = () => {
                     </div>
                   )}
 
+                  {/* Official PDF Matched Excerpts */}
+                  {Array.isArray(result.matched_snippets) && result.matched_snippets.length > 0 && (
+                    <div className="mt-3 space-y-1.5">
+                      {result.matched_snippets.map((snip, sIdx) => (
+                        <div key={`snip-${sIdx}`} className="text-xs bg-slate-950/80 border-l-2 border-amber-400 p-2.5 rounded-r-md text-slate-200">
+                          <span className="text-amber-400 font-bold mr-1.5 text-[11px] uppercase tracking-wider">Official Judgment Excerpt:</span>
+                          <span dangerouslySetInnerHTML={{ __html: snip }} />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   {/* Summary / Snippet with query highlights */}
                   {result.summary && (
                     <div className="mt-3 text-sm text-slate-300 line-clamp-2 leading-relaxed bg-slate-900/40 p-3 rounded-lg border border-slate-800">

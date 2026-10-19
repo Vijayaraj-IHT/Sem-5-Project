@@ -17,7 +17,7 @@ from fastapi import (
 from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
-from app.core.security import get_current_user, require_role
+from app.core.security import get_current_user, get_optional_current_user, require_role
 from app.models.user import User
 from app.models.case import Case
 from app.models.document_version import DocumentVersion
@@ -341,6 +341,8 @@ def view_case_document(
         file_path=display_path,
         redacted_file_path=case.redacted_file_path,
         integrity_status=integrity_status,
+        full_text=case.full_text,
+        page_count=case.page_count or 1,
     )
     return response_data
 
@@ -437,3 +439,141 @@ def download_case(
             "X-Lexguard-Verified": "true",
         },
     )
+
+
+@router.get("/{case_id}/official-content")
+def get_official_case_content(
+    case_id: str,
+    request: Request = None,
+    current_user: Optional[User] = Depends(get_optional_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Returns structured page-by-page contents extracted from the official PDF.
+    """
+    import re
+    case = db.query(Case).filter(Case.id == case_id).first()
+    if not case:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case record not found.")
+
+    if case.status != "published" and (not current_user or current_user.role not in ["court_staff", "senior_staff", "staff"]):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access restricted: This case is not yet published.")
+
+    text_to_parse = case.full_text or case.summary or ""
+    if not text_to_parse and os.path.exists(case.file_path):
+        try:
+            import pdfplumber
+            with pdfplumber.open(case.file_path) as pdf:
+                pages_text = []
+                for p_idx, p in enumerate(pdf.pages):
+                    t = (p.extract_text() or "").strip()
+                    pages_text.append(f"--- PAGE {p_idx + 1} ---\n{t}")
+                case.full_text = "\n\n".join(pages_text)
+                case.page_count = len(pdf.pages)
+                db.commit()
+                text_to_parse = case.full_text
+        except Exception:
+            pass
+
+    # Break text into pages by delimiter
+    pages = []
+    raw_pages = re.split(r'---\s*PAGE\s+(\d+)\s*---', text_to_parse)
+    if len(raw_pages) > 1:
+        for i in range(1, len(raw_pages), 2):
+            pg_num = int(raw_pages[i])
+            pg_text = raw_pages[i + 1].strip() if i + 1 < len(raw_pages) else ""
+            pages.append({"page": pg_num, "content": pg_text})
+    else:
+        pages.append({"page": 1, "content": text_to_parse})
+
+    return {
+        "case_id": case.id,
+        "case_no": case.case_no,
+        "title": case.title,
+        "court": case.court,
+        "year": case.year,
+        "page_count": len(pages),
+        "total_words": len(text_to_parse.split()),
+        "full_text": text_to_parse,
+        "pages": pages,
+        "file_hash": case.file_hash,
+        "source_url": case.source_url,
+    }
+
+
+@router.get("/{case_id}/search-keywords")
+def search_keywords_in_case(
+    case_id: str,
+    q: str = Query(..., min_length=1, max_length=100),
+    request: Request = None,
+    current_user: Optional[User] = Depends(get_optional_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Precision keyword finder inside the official judgment PDF:
+    Scans the judgment page-by-page and returns all keyword occurrences
+    with page numbers, surrounding sentence snippets, and hit counts.
+    """
+    import re
+    case = db.query(Case).filter(Case.id == case_id).first()
+    if not case:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case record not found.")
+
+    if case.status != "published" and (not current_user or current_user.role not in ["court_staff", "senior_staff", "staff"]):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access restricted: This case is not yet published.")
+
+    text_to_search = case.full_text or case.summary or ""
+    if not text_to_search and os.path.exists(case.file_path):
+        try:
+            import pdfplumber
+            with pdfplumber.open(case.file_path) as pdf:
+                pages_text = []
+                for p_idx, p in enumerate(pdf.pages):
+                    t = (p.extract_text() or "").strip()
+                    pages_text.append(f"--- PAGE {p_idx + 1} ---\n{t}")
+                case.full_text = "\n\n".join(pages_text)
+                case.page_count = len(pdf.pages)
+                db.commit()
+                text_to_search = case.full_text
+        except Exception:
+            pass
+
+    query_term = q.strip()
+    pattern = re.compile(re.escape(query_term), re.IGNORECASE)
+
+    occurrences = []
+    pages_matched = set()
+
+    current_page = 1
+    lines = text_to_search.split("\n")
+    for line_idx, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped.startswith("--- PAGE "):
+            m_pg = re.search(r'\d+', stripped)
+            if m_pg:
+                try:
+                    current_page = int(m_pg.group())
+                except Exception:
+                    pass
+            continue
+
+        if pattern.search(stripped):
+            pages_matched.add(current_page)
+            highlighted = pattern.sub(lambda m: f"<mark>{m.group(0)}</mark>", stripped)
+            occurrences.append({
+                "page": current_page,
+                "line_no": line_idx + 1,
+                "snippet": highlighted,
+                "raw_text": stripped,
+            })
+
+    return {
+        "case_id": case.id,
+        "case_no": case.case_no,
+        "query": query_term,
+        "total_matches": len(occurrences),
+        "pages_matched": sorted(list(pages_matched)),
+        "page_count": case.page_count or 1,
+        "occurrences": occurrences,
+    }
+

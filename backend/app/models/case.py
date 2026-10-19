@@ -38,6 +38,10 @@ class Case(Base):
     disposition = Column(String(100), nullable=True)             # Allowed, Dismissed, Quashed, Remanded
     precedents_cited = Column(JSON, default=list, nullable=False)# Prior landmark judgments relied upon
 
+    # Official PDF Full Text & Metadata
+    full_text = Column(Text, nullable=True)                      # Complete extracted text of official judgment PDF
+    page_count = Column(Integer, default=1, nullable=True)       # Total pages in official PDF document
+
     # Source & Precedential Status Attributes
     source_url = Column(String(500), nullable=True)              # Official court repository URL if verified
     source_verification_state = Column(String(50), default="unverified", nullable=True) # verified, unverified

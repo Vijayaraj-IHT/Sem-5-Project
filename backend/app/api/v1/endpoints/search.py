@@ -19,6 +19,44 @@ from app.services.audit_service import log_audit_event
 router = APIRouter()
 
 
+import re
+
+
+def _extract_matched_snippets(text: str, tokens: List[str], max_snippets: int = 2) -> tuple[List[str], List[str]]:
+    if not text or not tokens:
+        return [], []
+    snippets = []
+    matched_kws = set()
+    lines = text.split("\n")
+    current_page = 1
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("--- PAGE "):
+            m_pg = re.search(r'\d+', stripped)
+            if m_pg:
+                try:
+                    current_page = int(m_pg.group())
+                except Exception:
+                    pass
+            continue
+        line_lower = stripped.lower()
+        for tok in tokens:
+            if tok in line_lower:
+                matched_kws.add(tok)
+                if len(snippets) < max_snippets:
+                    # Highlight match with <mark> tags
+                    pattern = re.compile(re.escape(tok), re.IGNORECASE)
+                    highlighted = pattern.sub(lambda m: f"<mark>{m.group(0)}</mark>", stripped)
+                    if len(highlighted) > 220:
+                        # Trim around the first match
+                        m_pos = highlighted.lower().find("<mark>")
+                        start_pos = max(0, m_pos - 40)
+                        end_pos = min(len(highlighted), m_pos + 160)
+                        highlighted = ("..." if start_pos > 0 else "") + highlighted[start_pos:end_pos] + ("..." if end_pos < len(highlighted) else "")
+                    snippets.append(f"[Page {current_page}] {highlighted}")
+    return snippets, list(matched_kws)
+
+
 @router.post("/", response_model=SearchResponse)
 def search_cases(
     search_in: SearchRequest,
@@ -30,8 +68,9 @@ def search_cases(
     Hugging Face Hybrid Legal Precedent Search:
     1. Local LLM / NER extracts statutory sections and legal issues from natural language query.
     2. Sentence-Transformers (all-MiniLM-L6-v2) computes 384-dimensional query vector.
-    3. Fuses vector cosine similarity (0.5), statutory section matches (0.3), and keywords (0.2).
-    4. Logs search query in the immutable audit trail.
+    3. Fuses vector cosine similarity (0.5), statutory section matches (0.3), and keywords across official PDF text (0.2).
+    4. Extracts matched context snippets from official judgment text with page numbers.
+    5. Logs search query in the immutable audit trail.
     """
     # Fast-path for empty or short browse query (< 2 characters)
     query_text = (search_in.query or "").strip()
@@ -68,6 +107,8 @@ def search_cases(
                 outcome=c.outcome,
                 summary=c.summary,
                 file_hash=c.file_hash,
+                matched_snippets=[],
+                matched_keywords=[],
             )
             for c in cases_page
         ]
@@ -111,7 +152,7 @@ def search_cases(
 
     candidates: List[Case] = query_obj.all()
 
-    # 4. Score Fusion and Ranking
+    # 4. Score Fusion and Ranking across official PDF text and metadata
     scored_results = []
     tokens = [t.lower() for t in search_in.query.split() if len(t) > 2]
 
@@ -122,9 +163,14 @@ def search_cases(
             if any(s.lower() in sec.lower() for sec in c_sections):
                 matched_sections.append(s)
 
-        # Keyword matching across title and summary
-        haystack = f"{c.title} {c.summary or ''} {' '.join(c.keyword_tags or [])}".lower()
+        # Keyword matching across title, summary, and official judgment full text
+        haystack = f"{c.title} {c.summary or ''} {' '.join(c.keyword_tags or [])} {c.facts or ''} {c.ratio_decidendi or ''} {(c.full_text or '')[:10000]}".lower()
         keyword_hits = sum(1 for tok in tokens if tok in haystack)
+
+        # Extract matched snippet excerpts from the official judgment
+        matched_snippets, matched_kws = _extract_matched_snippets(
+            c.full_text or c.summary or "", tokens, max_snippets=2
+        )
 
         # 3-Way Score Fusion:
         # 0.5 * Semantic Vector Cosine Similarity + 0.3 * Statutory Section Overlap + 0.2 * Keyword Overlap
@@ -141,9 +187,11 @@ def search_cases(
             (0.5 * semantic_sim) + (0.3 * section_score) + (0.2 * keyword_score), 3
         )
 
-        # Baseline fallback for direct title match
-        if any(tok in c.title.lower() for tok in tokens) and relevance_score < 0.25:
-            relevance_score = 0.35
+        # Baseline fallback for direct title or official full-text keyword matches
+        if any(tok in c.title.lower() for tok in tokens) and relevance_score < 0.35:
+            relevance_score = 0.40
+        elif len(matched_kws) > 0 and relevance_score < 0.25:
+            relevance_score = 0.30
 
         if relevance_score > 0.0 or not tokens:
             scored_results.append(
@@ -160,6 +208,8 @@ def search_cases(
                         outcome=c.outcome,
                         summary=c.summary,
                         file_hash=c.file_hash,
+                        matched_snippets=matched_snippets,
+                        matched_keywords=matched_kws,
                     ),
                 )
             )

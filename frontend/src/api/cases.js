@@ -77,10 +77,38 @@ export async function verifyIntegrity(caseId) {
   return response.data;
 }
 
+/**
+ * Retrieve page-by-page official judgment text extracted directly from official court PDF.
+ *
+ * @param {string} caseId - Unique case identifier
+ * @returns {Promise<Object>} Official pages, full text, page count, word count, and source URL
+ */
+export async function getOfficialCaseContent(caseId) {
+  const response = await client.get(`/cases/${caseId}/official-content`);
+  return response.data;
+}
+
+/**
+ * Precision in-document keyword search across the official judgment PDF.
+ *
+ * @param {string} caseId - Unique case identifier
+ * @param {string} query - Keyword term or statutory section to locate
+ * @returns {Promise<Object>} Occurrences with page numbers, line numbers, and highlighted snippets
+ */
+export async function searchKeywordsInCase(caseId, query) {
+  const response = await client.get(`/cases/${caseId}/search-keywords`, {
+    params: { q: query },
+  });
+  return response.data;
+}
+
 export default {
   uploadCase,
   getCases,
   getCase,
   viewCase,
   verifyIntegrity,
+  getOfficialCaseContent,
+  searchKeywordsInCase,
 };
+

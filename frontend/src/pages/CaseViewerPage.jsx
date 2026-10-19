@@ -25,10 +25,17 @@ import {
   HelpCircle,
   Layers,
   ArrowRight,
+  Search,
+  ExternalLink,
+  FileSearch,
+  Eye,
+  ChevronLeft,
+  ChevronRight,
+  X,
 } from 'lucide-react';
 import IntegrityBadge from '../components/common/IntegrityBadge';
 import LoadingSpinner from '../components/common/LoadingSpinner';
-import { getCase, viewCase, verifyIntegrity } from '../api/cases';
+import { getCase, viewCase, verifyIntegrity, getOfficialCaseContent, searchKeywordsInCase } from '../api/cases';
 import { getBookmarks, addBookmark, removeBookmark } from '../api/bookmarks';
 import { useAuth } from '../context/AuthContext';
 
@@ -49,6 +56,15 @@ const CaseViewerPage = () => {
   const [verifying, setVerifying] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
   const [activeTab, setActiveTab] = useState('structure'); // 'structure' or 'document'
+
+  // Official Judgment & Keyword Finder State
+  const [officialContent, setOfficialContent] = useState(null);
+  const [contentLoading, setContentLoading] = useState(false);
+  const [keywordQuery, setKeywordQuery] = useState('');
+  const [keywordResults, setKeywordResults] = useState(null);
+  const [searchingKeywords, setSearchingKeywords] = useState(false);
+  const [activePageNum, setActivePageNum] = useState(1);
+  const [continuousView, setContinuousView] = useState(false);
 
   // Citation & Copy States
   const [citationCopied, setCitationCopied] = useState(false);
@@ -89,6 +105,32 @@ const CaseViewerPage = () => {
         data = await getCase(caseId);
       }
       setCaseData(data);
+
+      // Parse full text into official pages if present
+      if (data?.full_text) {
+        const rawPages = data.full_text.split(/---\s*PAGE\s+(\d+)\s*---/);
+        const parsedPages = [];
+        if (rawPages.length > 1) {
+          for (let i = 1; i < rawPages.length; i += 2) {
+            parsedPages.push({ page: parseInt(rawPages[i], 10), content: rawPages[i + 1]?.trim() || '' });
+          }
+        } else {
+          parsedPages.push({ page: 1, content: data.full_text });
+        }
+        setOfficialContent({
+          case_id: data.id,
+          case_no: data.case_no,
+          title: data.title,
+          court: data.court,
+          year: data.year,
+          page_count: data.page_count || parsedPages.length,
+          total_words: data.full_text.split(/\s+/).length,
+          full_text: data.full_text,
+          pages: parsedPages,
+          file_hash: data.file_hash,
+          source_url: data.source_url,
+        });
+      }
 
       // 2. Fetch real-time integrity verification
       try {
@@ -137,9 +179,60 @@ const CaseViewerPage = () => {
     }
   }, [caseId, canBookmark]);
 
+  // Load structured official content on demand
+  const loadOfficialContent = useCallback(async () => {
+    if (!caseId || officialContent) return;
+    setContentLoading(true);
+    try {
+      const content = await getOfficialCaseContent(caseId);
+      setOfficialContent(content);
+    } catch (err) {
+      console.warn('Could not load official page content:', err);
+    } finally {
+      setContentLoading(false);
+    }
+  }, [caseId, officialContent]);
+
   useEffect(() => {
     loadCaseAndVerification();
   }, [loadCaseAndVerification]);
+
+  useEffect(() => {
+    if (activeTab === 'document') {
+      loadOfficialContent();
+    }
+  }, [activeTab, loadOfficialContent]);
+
+  // Handle keyword searching inside judgment
+  const handleSearchKeywords = async (e) => {
+    if (e) e.preventDefault();
+    const q = keywordQuery.trim();
+    if (!q) {
+      setKeywordResults(null);
+      return;
+    }
+    setSearchingKeywords(true);
+    try {
+      const res = await searchKeywordsInCase(caseId, q);
+      setKeywordResults(res);
+      if (res.pages_matched?.length > 0) {
+        setActivePageNum(res.pages_matched[0]);
+        showToast(`Found ${res.total_matches} occurrences across ${res.pages_matched.length} page(s).`);
+      } else {
+        showToast(`No occurrences found for "${q}" in this judgment.`);
+      }
+    } catch (err) {
+      console.error('Keyword search failed:', err);
+      showToast('Could not complete keyword search.');
+    } finally {
+      setSearchingKeywords(false);
+    }
+  };
+
+  const handleClearKeywords = () => {
+    setKeywordQuery('');
+    setKeywordResults(null);
+  };
 
   // On-demand re-verification handler
   const handleVerifyIntegrity = async () => {
@@ -237,6 +330,48 @@ const CaseViewerPage = () => {
     }
     return Boolean(caseData?.file_hash);
   }, [verificationData, caseData]);
+
+  // Copy Page Text helper
+  const handleCopyPageText = (text, pageNum) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
+      showToast(`Page ${pageNum} text copied to clipboard.`);
+    });
+  };
+
+  // Render text with highlighted search keywords
+  const renderHighlightedContent = (text, query) => {
+    if (!text) return null;
+    const trimmed = (query || '').trim();
+    if (!trimmed) {
+      return (
+        <div className="whitespace-pre-wrap font-serif text-slate-800 leading-relaxed text-sm sm:text-base selection:bg-amber-200">
+          {text}
+        </div>
+      );
+    }
+    const words = trimmed.split(/\s+/).filter(Boolean);
+    const escapedTerms = words.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    const pattern = `(${escapedTerms.join('|')})`;
+    const regex = new RegExp(pattern, 'gi');
+    const parts = text.split(regex);
+    const termLowerSet = new Set(words.map((w) => w.toLowerCase()));
+
+    return (
+      <div className="whitespace-pre-wrap font-serif text-slate-800 leading-relaxed text-sm sm:text-base selection:bg-amber-200">
+        {parts.map((part, i) =>
+          termLowerSet.has(part.toLowerCase()) ? (
+            <mark key={i} className="bg-amber-300 text-slate-950 font-bold px-1 py-0.5 rounded shadow-xs">
+              {part}
+            </mark>
+          ) : (
+            part
+          )
+        )}
+      </div>
+    );
+  };
+
 
   // Loading State
   if (loading) {
@@ -757,68 +892,362 @@ const CaseViewerPage = () => {
         {activeTab === 'document' && (
           <section className="mt-6 bg-white text-slate-900 border border-slate-200 rounded-2xl shadow-xl overflow-hidden">
             {/* Document Header Ribbon */}
-            <div className="bg-slate-100 border-b border-slate-200 px-6 py-4 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-slate-700" />
-                <span className="text-sm font-bold text-slate-800 font-serif">
-                  Judicial Judgment & Reasoning Record
-                </span>
-              </div>
-              <div className="text-xs font-mono text-slate-500">
-                Verified Copy &bull; Lexguard Secure Storage
-              </div>
-            </div>
-
-            {/* Document Content with legal-text styling */}
-            <div className="p-8 sm:p-12 space-y-6">
-              {/* Case Summary */}
-              {caseData.summary ? (
-                <div className="bg-slate-50 border-l-4 border-amber-500 p-6 rounded-r-xl">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 font-sans">
-                    Official Legal Summary & Ratio Decidendi
-                  </h4>
-                  <p className="legal-text text-base sm:text-lg text-slate-800 leading-relaxed italic">
-                    &ldquo;{caseData.summary}&rdquo;
+            <div className="bg-slate-900 text-white px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold font-serif text-white">
+                      Official Court Record & Full Judgment
+                    </span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                      SHA-256 VERIFIED
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400">
+                    Authentic High Court Transcript &bull; {officialContent?.page_count || caseData.page_count || 1} Pages &bull; {officialContent?.total_words ? `${officialContent.total_words.toLocaleString()} Words` : 'Extracted Text'}
                   </p>
                 </div>
-              ) : null}
-
-              {/* Case Parties & Bench Record */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-6 rounded-xl border border-slate-100 text-sm">
-                <div>
-                  <span className="font-semibold text-slate-600 block text-xs uppercase">Parties:</span>
-                  <span className="text-slate-900 font-medium">{caseData.parties || 'N/A'}</span>
-                </div>
-                <div>
-                  <span className="font-semibold text-slate-600 block text-xs uppercase">Coram / Bench:</span>
-                  <span className="text-slate-900 font-medium">{caseData.judge || 'N/A'}</span>
-                </div>
-                <div>
-                  <span className="font-semibold text-slate-600 block text-xs uppercase">Judicial Outcome:</span>
-                  <span className="text-slate-900 font-bold uppercase">{caseData.outcome || 'Decided'}</span>
-                </div>
-                <div>
-                  <span className="font-semibold text-slate-600 block text-xs uppercase">Repository Record ID:</span>
-                  <span className="text-slate-700 font-mono text-xs">{caseData.id}</span>
-                </div>
               </div>
 
-              {/* Download Official Document Card */}
-              <div className="text-center py-10 px-6 bg-slate-50/60 border border-dashed border-slate-300 rounded-xl">
-                <FileText className="w-10 h-10 mx-auto mb-3 text-slate-400" />
-                <h4 className="font-semibold text-slate-800 mb-1">Authentic Court Judgment Record</h4>
-                <p className="text-sm text-slate-500 mb-4 max-w-md mx-auto">
-                  The complete judicial document is stored with real-time SHA-256 integrity verification.
-                </p>
+              <div className="flex items-center gap-2">
+                {caseData.source_url && (
+                  <a
+                    href={caseData.source_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5 text-blue-400" />
+                    <span>Official Portal</span>
+                  </a>
+                )}
                 <button
                   type="button"
                   onClick={handleDownloadDocument}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 transition-colors shadow-sm cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-amber-400 hover:bg-amber-300 text-slate-950 transition-colors shadow-xs cursor-pointer"
                 >
-                  <Download className="w-4 h-4" />
-                  <span>Download Verified PDF / Record</span>
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download PDF</span>
                 </button>
               </div>
+            </div>
+
+            {/* In-Document Keyword Search & Filter Ribbon */}
+            <div className="bg-slate-50 border-b border-slate-200 p-4 sm:p-5">
+              <form onSubmit={handleSearchKeywords} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={keywordQuery}
+                    onChange={(e) => setKeywordQuery(e.target.value)}
+                    placeholder="Search keywords in this judgment (e.g., bail, NDPS, Section 41A, quashing, trademark)..."
+                    className="w-full pl-10 pr-9 py-2 bg-white border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 transition-all shadow-xs"
+                  />
+                  {keywordQuery && (
+                    <button
+                      type="button"
+                      onClick={handleClearKeywords}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                      title="Clear keyword search"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="submit"
+                    disabled={searchingKeywords}
+                    className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white transition-colors shadow-xs cursor-pointer disabled:opacity-50"
+                  >
+                    <Search className={`w-3.5 h-3.5 text-amber-400 ${searchingKeywords ? 'animate-spin' : ''}`} />
+                    <span>{searchingKeywords ? 'Searching...' : 'Find in Judgment'}</span>
+                  </button>
+
+                  {keywordResults && (
+                    <button
+                      type="button"
+                      onClick={handleClearKeywords}
+                      className="px-3 py-2 rounded-xl text-xs font-semibold bg-slate-200 hover:bg-slate-300 text-slate-700 transition-colors cursor-pointer"
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
+              </form>
+
+              {/* Keyword Search Results & Quick Navigation */}
+              {keywordResults && (
+                <div className="mt-4 pt-4 border-t border-slate-200 space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-slate-800">
+                        Search Results:
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                        {keywordResults.total_matches} match{keywordResults.total_matches !== 1 ? 'es' : ''} found
+                      </span>
+                      <span className="text-xs text-slate-500">
+                        across {keywordResults.pages_matched?.length || 0} page{keywordResults.pages_matched?.length !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+
+                    {keywordResults.pages_matched?.length > 0 && (
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[11px] font-semibold text-slate-500 mr-1">Jump to page:</span>
+                        {keywordResults.pages_matched.map((p) => (
+                          <button
+                            key={`kw-jump-${p}`}
+                            type="button"
+                            onClick={() => {
+                              setActivePageNum(p);
+                              setContinuousView(false);
+                            }}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                              activePageNum === p && !continuousView
+                                ? 'bg-amber-400 text-slate-950 shadow-xs'
+                                : 'bg-white hover:bg-amber-50 text-slate-700 border border-slate-300'
+                            }`}
+                          >
+                            P.{p}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Snippets Preview list if occurrences exist */}
+                  {keywordResults.results_by_page && keywordResults.results_by_page.length > 0 && (
+                    <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
+                      {keywordResults.results_by_page.map((pageGroup) => (
+                        <div key={`snippet-page-${pageGroup.page}`} className="bg-white rounded-lg p-2.5 border border-slate-200 text-xs">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="font-bold text-slate-700">
+                              Page {pageGroup.page} ({pageGroup.matches_count} occurrences)
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActivePageNum(pageGroup.page);
+                                setContinuousView(false);
+                              }}
+                              className="text-amber-600 hover:text-amber-700 font-bold hover:underline cursor-pointer"
+                            >
+                              Go to Page {pageGroup.page} &rarr;
+                            </button>
+                          </div>
+                          <div className="space-y-1">
+                            {pageGroup.occurrences?.slice(0, 3).map((occ, occIdx) => (
+                              <div
+                                key={`occ-${occIdx}`}
+                                className="text-slate-600 font-mono text-[11px] bg-slate-50 p-1.5 rounded border border-slate-100 line-clamp-2"
+                                dangerouslySetInnerHTML={{ __html: occ.snippet }}
+                              />
+                            ))}
+                            {pageGroup.occurrences?.length > 3 && (
+                              <p className="text-[10px] text-slate-400 italic">
+                                + {pageGroup.occurrences.length - 3} more occurrences on this page
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Document Reading View Controls Ribbon */}
+            {officialContent?.pages?.length > 0 && (
+              <div className="bg-slate-100/90 border-b border-slate-200 px-6 py-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+                {/* View Mode Toggle */}
+                <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-slate-200 shadow-2xs">
+                  <button
+                    type="button"
+                    onClick={() => setContinuousView(false)}
+                    className={`px-3 py-1 rounded-md font-semibold transition-colors cursor-pointer ${
+                      !continuousView
+                        ? 'bg-amber-400 text-slate-950 font-bold'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Page View
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setContinuousView(true)}
+                    className={`px-3 py-1 rounded-md font-semibold transition-colors cursor-pointer ${
+                      continuousView
+                        ? 'bg-amber-400 text-slate-950 font-bold'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Continuous Scroll
+                  </button>
+                </div>
+
+                {/* Page Navigation Controls (when in Single Page View) */}
+                {!continuousView && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setActivePageNum((curr) => Math.max(1, curr - 1))}
+                      disabled={activePageNum <= 1}
+                      className="p-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                      title="Previous Page"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+
+                    <div className="flex items-center gap-1.5 font-medium text-slate-700">
+                      <span>Page</span>
+                      <select
+                        value={activePageNum}
+                        onChange={(e) => setActivePageNum(Number(e.target.value))}
+                        className="bg-white border border-slate-300 rounded-md px-2 py-1 font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
+                      >
+                        {officialContent.pages.map((p) => (
+                          <option key={`opt-p-${p.page}`} value={p.page}>
+                            {p.page}
+                          </option>
+                        ))}
+                      </select>
+                      <span>of {officialContent.pages.length}</span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setActivePageNum((curr) => Math.min(officialContent.pages.length, curr + 1))
+                      }
+                      disabled={activePageNum >= officialContent.pages.length}
+                      className="p-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                      title="Next Page"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Document Content Display */}
+            <div className="p-6 sm:p-10 space-y-6 bg-slate-50/40">
+              {contentLoading ? (
+                <div className="py-20 text-center">
+                  <LoadingSpinner size="md" message="Extracting page text and cryptographic markers..." />
+                </div>
+              ) : officialContent?.pages?.length > 0 ? (
+                continuousView ? (
+                  /* Continuous Scroll of All Pages */
+                  <div className="space-y-8">
+                    {officialContent.pages.map((p) => (
+                      <article
+                        key={`cont-page-${p.page}`}
+                        id={`court-page-${p.page}`}
+                        className="bg-white rounded-2xl p-6 sm:p-10 shadow-sm border border-slate-200 space-y-4"
+                      >
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-200 text-xs">
+                          <span className="font-bold text-slate-700 uppercase tracking-wider font-mono">
+                            Page {p.page} of {officialContent.pages.length}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyPageText(p.content, p.page)}
+                            className="inline-flex items-center gap-1 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+                            title="Copy text of this page"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                            <span>Copy Page Text</span>
+                          </button>
+                        </div>
+                        {renderHighlightedContent(p.content, keywordQuery)}
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  /* Single Page View */
+                  (() => {
+                    const currentPageObj =
+                      officialContent.pages.find((p) => p.page === activePageNum) ||
+                      officialContent.pages[0];
+                    return (
+                      <article className="bg-white rounded-2xl p-6 sm:p-10 shadow-sm border border-slate-200 space-y-4">
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-200 text-xs">
+                          <span className="font-bold text-slate-700 uppercase tracking-wider font-mono">
+                            Page {currentPageObj.page} of {officialContent.pages.length}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyPageText(currentPageObj.content, currentPageObj.page)}
+                            className="inline-flex items-center gap-1 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+                            title="Copy text of this page"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                            <span>Copy Page Text</span>
+                          </button>
+                        </div>
+                        {renderHighlightedContent(currentPageObj.content, keywordQuery)}
+                      </article>
+                    );
+                  })()
+                )
+              ) : (
+                /* Fallback if no extracted pages exist */
+                <div className="space-y-6">
+                  {caseData.summary ? (
+                    <div className="bg-white border-l-4 border-amber-500 p-6 rounded-r-xl shadow-xs">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 font-sans">
+                        Official Legal Summary & Ratio Decidendi
+                      </h4>
+                      <p className="legal-text text-base sm:text-lg text-slate-800 leading-relaxed italic">
+                        &ldquo;{caseData.summary}&rdquo;
+                      </p>
+                    </div>
+                  ) : null}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white p-6 rounded-xl border border-slate-200 text-sm">
+                    <div>
+                      <span className="font-semibold text-slate-500 block text-xs uppercase">Parties:</span>
+                      <span className="text-slate-900 font-medium">{caseData.parties || 'N/A'}</span>
+                    </div>
+                    <div>
+                      <span className="font-semibold text-slate-500 block text-xs uppercase">Coram / Bench:</span>
+                      <span className="text-slate-900 font-medium">{caseData.judge || 'N/A'}</span>
+                    </div>
+                    <div>
+                      <span className="font-semibold text-slate-500 block text-xs uppercase">Judicial Outcome:</span>
+                      <span className="text-slate-900 font-bold uppercase">{caseData.outcome || 'Decided'}</span>
+                    </div>
+                    <div>
+                      <span className="font-semibold text-slate-500 block text-xs uppercase">Repository Record ID:</span>
+                      <span className="text-slate-700 font-mono text-xs">{caseData.id}</span>
+                    </div>
+                  </div>
+
+                  <div className="text-center py-10 px-6 bg-white border border-dashed border-slate-300 rounded-xl">
+                    <FileText className="w-10 h-10 mx-auto mb-3 text-slate-400" />
+                    <h4 className="font-semibold text-slate-800 mb-1">Authentic Court Judgment PDF</h4>
+                    <p className="text-sm text-slate-500 mb-4 max-w-md mx-auto">
+                      The official PDF judgment file is verified and ready for download with SHA-256 seal.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleDownloadDocument}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 transition-colors shadow-sm cursor-pointer"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>Download Verified PDF / Record</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </section>
         )}

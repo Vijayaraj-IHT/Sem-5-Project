@@ -35,6 +35,8 @@ class CaseBase(BaseModel):
     statutory_tests: List[Any] = Field(default_factory=list)
     disposition: Optional[str] = Field(default=None, max_length=100)
     precedents_cited: List[Any] = Field(default_factory=list)
+    full_text: Optional[str] = None
+    page_count: Optional[int] = 1
     source_url: Optional[str] = None
     source_verification_state: Optional[str] = "unverified"
     precedential_status: Optional[str] = "Precedential status not checked"
@@ -58,6 +60,8 @@ class EnrichedCaseDetailResponse(BaseModel):
     statutory_tests: List[Dict[str, Any]] = []
     disposition: Optional[str] = None
     precedents_cited: List[Dict[str, Any]] = []
+    full_text: Optional[str] = None
+    page_count: Optional[int] = 1
     file_hash: str
     status: str
 

@@ -28,6 +28,8 @@ class SearchResultItem(BaseModel):
     outcome: Optional[str] = None
     summary: Optional[str] = None
     file_hash: str
+    matched_snippets: List[str] = []
+    matched_keywords: List[str] = []
 
 
 class SearchResponse(BaseModel):
