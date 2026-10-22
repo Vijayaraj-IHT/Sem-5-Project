@@ -101,6 +101,12 @@
                 </a>
               </li>
               <li>
+                <a href="acts-explorer.html" class="lg-sidebar-link ${activePage === 'acts' ? 'active' : ''}">
+                  <i class="bi bi-book-half"></i>
+                  <span>Statutory Explorer</span>
+                </a>
+              </li>
+              <li>
                 <a href="case-compare.html" class="lg-sidebar-link ${activePage === 'compare' ? 'active' : ''}">
                   <i class="bi bi-columns-gap"></i>
                   <span>Precedent Compare</span>

@@ -184,10 +184,14 @@
 
         <!-- TAB 2: Exact Mozilla PDF.js Viewer -->
         <div class="tab-pane fade" id="tab-pdf" role="tabpanel">
-          <div class="card card-judicial p-3">
+          <div class="card card-judicial p-3 lg-pdf-container" id="pdf-main-container">
             <!-- PDF Viewer Toolbar -->
             <div class="lg-pdf-toolbar">
               <div class="d-flex align-items-center gap-2">
+                <!-- Toggle Thumbnails Drawer -->
+                <button type="button" class="btn btn-sm btn-judicial-outline" id="pdf-toggle-thumbnails" title="Toggle Thumbnail Sidebar">
+                  <i class="bi bi-layout-sidebar-inset"></i>
+                </button>
                 <button type="button" class="btn btn-sm btn-judicial-outline" id="pdf-prev-page">
                   <i class="bi bi-chevron-left"></i>
                 </button>
@@ -199,11 +203,12 @@
                 </button>
               </div>
 
+              <!-- Zoom & Rotation Controls -->
               <div class="d-flex align-items-center gap-2">
                 <button type="button" class="btn btn-sm btn-judicial-outline" id="pdf-zoom-out" title="Zoom Out">
                   <i class="bi bi-zoom-out"></i>
                 </button>
-                <span class="text-secondary small fw-semibold" id="pdf-zoom-level">100%</span>
+                <span class="text-secondary small fw-semibold" id="pdf-zoom-level">125%</span>
                 <button type="button" class="btn btn-sm btn-judicial-outline" id="pdf-zoom-in" title="Zoom In">
                   <i class="bi bi-zoom-in"></i>
                 </button>
@@ -212,25 +217,57 @@
                 </button>
               </div>
 
-              <!-- Keyword Search inside Document -->
-              <div class="input-group input-group-sm" style="max-width: 250px;">
-                <input type="text" class="form-control" id="pdf-search-input" placeholder="Search in text...">
-                <button class="btn btn-judicial-outline" type="button" id="pdf-search-btn">
-                  <i class="bi bi-search"></i>
+              <!-- In-Document Search & Match Stepper -->
+              <div class="d-flex align-items-center gap-1">
+                <div class="input-group input-group-sm" style="max-width: 260px;">
+                  <input type="text" class="form-control" id="pdf-search-input" placeholder="Search in judgment...">
+                  <button class="btn btn-judicial-outline" type="button" id="pdf-search-prev" title="Previous Match" disabled>
+                    <i class="bi bi-chevron-up"></i>
+                  </button>
+                  <button class="btn btn-judicial-outline" type="button" id="pdf-search-next" title="Next Match" disabled>
+                    <i class="bi bi-chevron-down"></i>
+                  </button>
+                </div>
+                <span class="small text-secondary px-1 font-mono" id="pdf-match-counter" style="font-size: 0.75rem;"></span>
+              </div>
+
+              <!-- Utility Actions: Print & Fullscreen -->
+              <div class="d-flex align-items-center gap-2 ms-auto">
+                <button type="button" class="btn btn-sm btn-judicial-outline" id="pdf-print-btn" title="Print Official Judgment">
+                  <i class="bi bi-printer"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-judicial-outline" id="pdf-fullscreen-btn" title="Toggle Fullscreen">
+                  <i class="bi bi-fullscreen" id="pdf-fullscreen-icon"></i>
                 </button>
               </div>
             </div>
 
-            <!-- Canvas Viewport for PDF.js Rendering -->
-            <div class="lg-pdf-viewport" id="pdf-viewport">
-              <div id="pdf-loading" class="text-center py-5">
-                <div class="spinner-border text-warning" role="status"></div>
-                <p class="text-secondary small mt-2">Loading official judicial document stream...</p>
+            <!-- Main PDF View Area with Sidebar Drawer -->
+            <div class="lg-pdf-with-thumbnails">
+              <!-- Thumbnails Sidebar -->
+              <div class="lg-pdf-thumbnails-drawer" id="pdf-thumbnails-drawer">
+                <div class="small fw-bold text-secondary text-uppercase mb-2 ps-1" style="font-size: 0.7rem;">
+                  <i class="bi bi-images me-1"></i>Pages
+                </div>
+                <div id="thumbnails-list" class="d-flex flex-column gap-2">
+                  <!-- Rendered thumbnails -->
+                </div>
               </div>
-              <canvas id="pdf-canvas" class="d-none"></canvas>
 
-              <!-- Fallback text view if document is pure text -->
-              <div id="pdf-fallback-text" class="text-start d-none p-3 font-mono text-light" style="white-space: pre-wrap; font-size: 0.85rem; line-height: 1.6;"></div>
+              <!-- Canvas Viewport for PDF.js Rendering -->
+              <div class="lg-pdf-viewport flex-grow-1" id="pdf-viewport">
+                <div id="pdf-loading" class="text-center py-5">
+                  <div class="spinner-border text-warning" role="status"></div>
+                  <p class="text-secondary small mt-2">Streaming official judicial PDF from secure repository...</p>
+                </div>
+                <div class="lg-canvas-wrapper d-none" id="canvas-wrapper">
+                  <canvas id="pdf-canvas"></canvas>
+                  <div id="pdf-text-layer" class="textLayer"></div>
+                </div>
+
+                <!-- Fallback text view if document is pure text -->
+                <div id="pdf-fallback-text" class="text-start d-none p-3 font-mono text-light" style="white-space: pre-wrap; font-size: 0.85rem; line-height: 1.6;"></div>
+              </div>
             </div>
           </div>
         </div>

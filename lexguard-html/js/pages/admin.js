@@ -170,8 +170,11 @@ $(document).ready(function () {
               <td class="text-secondary">${LG.utils.escapeHtml(item.submitted_by || 'Staff')}</td>
               <td class="font-mono text-warning small">${LG.utils.truncateHash(item.file_hash, 6)}</td>
               <td class="text-end">
-                <button type="button" class="btn btn-xs btn-gold open-review-btn" data-id="${encodeURIComponent(item.case_id)}" data-title="${LG.utils.escapeHtml(item.title)}" data-court="${LG.utils.escapeHtml(item.court)}">
-                  <i class="bi bi-shield-check me-1"></i>Review &amp; Seal
+                <a href="case-review.html?id=${encodeURIComponent(item.case_id)}" class="btn btn-xs btn-gold me-1" title="Open Split-Screen Review Workstation">
+                  <i class="bi bi-columns me-1"></i>Split-Screen Review
+                </a>
+                <button type="button" class="btn btn-xs btn-judicial-outline open-review-btn" data-id="${encodeURIComponent(item.case_id)}" data-title="${LG.utils.escapeHtml(item.title)}" data-court="${LG.utils.escapeHtml(item.court)}" title="Quick Seal Modal">
+                  <i class="bi bi-patch-check me-1"></i>Quick Seal
                 </button>
               </td>
             </tr>

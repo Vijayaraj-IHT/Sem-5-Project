@@ -1,108 +1,118 @@
 /**
- * LexGuard — Precedent Comparator Controller (case-compare.js)
+ * LexGuard — Multi-Precedent Comparator Controller (case-compare.js)
  * Semester 5 Project · LexGuard Judicial Repository & Verification Platform
  */
 
 $(document).ready(function () {
   'use strict';
 
-  const $select1 = $('#select-case-1');
-  const $select2 = $('#select-case-2');
+  const $targetSelect = $('#select-target-case');
+  const $p1Select = $('#select-precedent-1');
+  const $p2Select = $('#select-precedent-2');
+  const $p3Select = $('#select-precedent-3');
   const $compareBtn = $('#run-compare-btn');
+  const $swapBtn = $('#swap-cases-btn');
+  const $printBtn = $('#print-report-btn');
+
   const $loading = $('#compare-loading');
   const $resultsContainer = $('#compare-results-container');
-  const $swapBtn = $('#swap-cases-btn');
+  const $bestTitle = $('#best-match-title');
+  const $bestDesc = $('#best-match-desc');
+  const $scoreRingCircle = $('#score-ring-circle');
+  const $scoreRingText = $('#score-ring-text');
+  const $scorePills = $('#precedent-score-pills');
+  const $matrixHeadRow = $('#matrix-head-row');
+  const $matrixBody = $('#matrix-table-body');
 
-  let casesCache = {};
+  let precedentsCache = {};
 
   /**
-   * Load precedents into both select dropdowns.
+   * Load precedents from API into all 4 selection dropdowns.
    */
   function loadPrecedents() {
     LG.api.comparison.getPrecedents()
       .done(function (precedents) {
-        let opts1 = '<option value="">Choose Case 1...</option>';
-        let opts2 = '<option value="">Choose Precedent to Compare...</option>';
+        let targetOpts = '<option value="">Choose Target Case...</option>';
+        let p1Opts = '<option value="">Choose Precedent 1...</option>';
+        let p2Opts = '<option value="">Choose Precedent 2...</option>';
+        let p3Opts = '<option value="">Choose Precedent 3 (Optional)...</option>';
 
         (precedents || []).forEach(function (p) {
-          casesCache[p.id] = p;
+          precedentsCache[p.id] = p;
           const label = `${p.title} (${p.court}, ${p.year})`;
-          opts1 += `<option value="${p.id}">${LG.utils.escapeHtml(label)}</option>`;
-          opts2 += `<option value="${p.id}">${LG.utils.escapeHtml(label)}</option>`;
+          targetOpts += `<option value="${p.id}">${LG.utils.escapeHtml(label)}</option>`;
+          p1Opts += `<option value="${p.id}">${LG.utils.escapeHtml(label)}</option>`;
+          p2Opts += `<option value="${p.id}">${LG.utils.escapeHtml(label)}</option>`;
+          p3Opts += `<option value="${p.id}">${LG.utils.escapeHtml(label)}</option>`;
         });
 
-        $select1.html(opts1);
-        $select2.html(opts2);
+        $targetSelect.html(targetOpts);
+        $p1Select.html(p1Opts);
+        $p2Select.html(p2Opts);
+        $p3Select.html(p3Opts);
 
         // Check URL parameters ?case1=...&case2=...
         const param1 = LG.utils.getQueryParam('case1');
         const param2 = LG.utils.getQueryParam('case2');
 
-        if (param1) {
-          $select1.val(param1);
-        }
-        if (param2) {
-          $select2.val(param2);
-        } else if (precedents && precedents.length > 1 && param1 && precedents[0].id === param1) {
-          $select2.val(precedents[1].id);
-        } else if (precedents && precedents.length > 1 && !param1) {
-          $select1.val(precedents[0].id);
-          $select2.val(precedents[1].id);
+        if (param1) $targetSelect.val(param1);
+        if (param2) $p1Select.val(param2);
+
+        // Pre-populate sensible defaults if empty
+        if (precedents && precedents.length >= 3) {
+          if (!$targetSelect.val()) $targetSelect.val(precedents[0].id);
+          if (!$p1Select.val()) $p1Select.val(precedents[1].id);
+          if (!$p2Select.val()) $p2Select.val(precedents[2].id);
         }
 
-        if ($select1.val() && $select2.val()) {
-          runComparison();
+        if ($targetSelect.val() && $p1Select.val()) {
+          runMultiComparison();
         }
       })
       .fail(function () {
-        LG.toast('Failed to load published precedent database.', 'danger');
+        LG.toast('Failed to load published precedents for comparator tray.', 'danger');
       });
   }
 
   /**
-   * Run comparison between selected Case 1 and Case 2.
+   * Run Multi-Precedent Comparison using /comparison/compare-multi.
    */
-  function runComparison() {
-    const id1 = $select1.val();
-    const id2 = $select2.val();
+  function runMultiComparison() {
+    const targetId = $targetSelect.val();
+    const p1Id = $p1Select.val();
+    const p2Id = $p2Select.val();
+    const p3Id = $p3Select.val();
 
-    if (!id1 || !id2) {
-      LG.toast('Please select both cases for comparison.', 'warning');
+    if (!targetId || !p1Id) {
+      LG.toast('Please select at least a target case and one comparison precedent.', 'warning');
       return;
     }
 
-    if (id1 === id2) {
-      LG.toast('Please select two distinct cases to analyze divergence.', 'warning');
-      return;
-    }
+    const selectedPrecedentIds = [p1Id, p2Id, p3Id].filter(Boolean);
+    const target = precedentsCache[targetId] || {};
 
     $loading.removeClass('d-none');
     $resultsContainer.addClass('d-none');
 
-    const c1 = casesCache[id1] || {};
-    const c2 = casesCache[id2] || {};
-
     const payload = {
-      precedent_case_id: id2,
-      case_title: c1.title || 'Target Case',
-      court_jurisdiction: c1.court || 'High Court of Judicature',
-      facts_summary: c1.summary || c1.ratio_decidendi || 'Factual matrix of dispute and statutory challenge.',
-      statutory_provisions: (c1.section_tags || c1.sections || []).length > 0 ? (c1.section_tags || c1.sections) : ['Section 482 CrPC'],
-      legal_issues: [c1.ratio_decidendi || 'Substantive question of law and judicial precedent applicability']
+      precedent_case_ids: selectedPrecedentIds,
+      case_title: target.title || 'Target Petition',
+      court_jurisdiction: target.court || 'High Court of Judicature',
+      facts_summary: target.summary || target.ratio_decidendi || 'Dispute regarding procedural compliance and statutory bar.',
+      statutory_provisions: (target.section_tags || target.sections || []).length > 0 ? (target.section_tags || target.sections) : ['Section 482 CrPC'],
+      legal_issues: [target.ratio_decidendi || 'Applicability of binding judicial precedent']
     };
 
-    LG.api.comparison.compare(payload.precedent_case_id, payload.precedent_case_id) // api wrapper will use options
-    // Let's call the actual endpoint directly via LG.api.request
     LG.api.request({
-      url: '/comparison/compare',
+      url: '/comparison/compare-multi',
       method: 'POST',
       data: payload
     })
       .done(function (res) {
-        renderComparisonResults(res, c1, c2);
+        renderMultiResults(res, target, selectedPrecedentIds);
       })
       .fail(function (xhr) {
-        let msg = 'Failed to execute precedent comparison.';
+        let msg = 'Failed to execute multi-case comparison.';
         if (xhr.responseJSON && xhr.responseJSON.detail) {
           msg = typeof xhr.responseJSON.detail === 'string'
             ? xhr.responseJSON.detail
@@ -116,97 +126,122 @@ $(document).ready(function () {
   }
 
   /**
-   * Render comparison result matrix and score ring.
+   * Render Multi-Comparison Table and SVG score gauges.
    */
-  function renderComparisonResults(res, c1, c2) {
+  function renderMultiResults(res, target, precedentIds) {
     $resultsContainer.removeClass('d-none');
 
-    const score = Math.round(res.overall_score || 0);
-
-    // Update SVG Score Ring
-    const circumference = 220;
-    const offset = circumference - (score / 100) * circumference;
-    $('#score-ring-circle').css('stroke-dashoffset', offset);
-    $('#score-ring-text').text(score + '%');
-
-    // Score Tier Badge & Title
-    let tierText = 'Distinct Factual Matrix';
-    let tierClass = 'badge bg-secondary';
-    if (score >= 75) {
-      tierText = 'High Precedential Alignment';
-      tierClass = 'badge bg-success';
-    } else if (score >= 50) {
-      tierText = 'Moderate Statutory Overlap';
-      tierClass = 'badge badge-gold';
-    } else if (score >= 25) {
-      tierText = 'Partial Dimension Alignment';
-      tierClass = 'badge bg-info text-dark';
+    const results = res.results || [];
+    if (results.length === 0) {
+      LG.toast('No comparison results generated.', 'warning');
+      return;
     }
-    $('#score-tier-badge').attr('class', tierClass).text(tierText);
 
-    // 5 Dimensions Matrix Table
-    const dimensions = res.dimensions || [];
-    const rowsHtml = dimensions.map(function (dim) {
-      let stateBadge = 'badge bg-secondary';
-      if (dim.match_state === 'exact') stateBadge = 'badge bg-success';
-      else if (dim.match_state === 'partial') stateBadge = 'badge badge-gold';
-      else if (dim.match_state === 'different') stateBadge = 'badge bg-danger';
+    // 1. Best Match Header
+    const bestScore = Math.round(res.best_match_score || 0);
+    const circumference = 220;
+    const offset = circumference - (bestScore / 100) * circumference;
+    $scoreRingCircle.css('stroke-dashoffset', offset);
+    $scoreRingText.text(bestScore + '%');
 
-      const dimScore = Math.round(dim.dimension_score || 0);
+    // Find best precedent object
+    const bestPrecedent = precedentsCache[res.best_match_id] || results[0].precedent || {};
+    $bestTitle.text(bestPrecedent.title || 'Landmark Precedent');
+    $bestDesc.text(`Highest dimensional score (${bestScore}%) based on statutory overlap, bench hierarchy, and remedy congruence.`);
 
+    // 2. Score Pills across evaluated authorities
+    const pillsHtml = results.map(function (item, idx) {
+      const p = item.precedent || {};
+      const score = Math.round(item.overall_score || 0);
       return `
-        <tr>
-          <td>
-            <div class="fw-semibold text-light">${LG.utils.escapeHtml(dim.dimension_name)}</div>
-            <div class="text-secondary small mt-1" style="font-size: 0.78rem;">${LG.utils.escapeHtml(dim.explanation || '')}</div>
-          </td>
-          <td class="font-mono text-light small">${LG.utils.escapeHtml(dim.user_value || '—')}</td>
-          <td class="font-mono text-secondary small">${LG.utils.escapeHtml(dim.precedent_value || '—')}</td>
-          <td><span class="${stateBadge}">${LG.utils.escapeHtml(dim.match_state)}</span></td>
-          <td>
-            <div class="d-flex align-items-center gap-2">
-              <div class="progress flex-grow-1" style="height: 6px; background-color: #0c1019;">
-                <div class="progress-bar ${dimScore >= 70 ? 'bg-success' : dimScore >= 40 ? 'bg-warning' : 'bg-secondary'}" role="progressbar" style="width: ${dimScore}%;"></div>
-              </div>
-              <span class="small fw-bold text-light">${dimScore}%</span>
-            </div>
-          </td>
-        </tr>
+        <div class="p-2 px-3 rounded bg-dark border border-secondary border-opacity-25 small mb-1">
+          <div class="fw-bold text-light">${LG.utils.escapeHtml(p.title || `Precedent ${idx + 1}`)}</div>
+          <div class="d-flex align-items-center gap-2 mt-1">
+            <span class="badge ${score >= 70 ? 'bg-success' : 'badge-gold'} font-mono">${score}% Alignment</span>
+            <span class="text-secondary" style="font-size: 0.75rem;">${p.court || ''}</span>
+          </div>
+        </div>
       `;
     }).join('');
+    $scorePills.html(pillsHtml);
 
-    $('#matrix-table-body').html(rowsHtml);
+    // 3. Multi-Column Header Row
+    let headHtml = `
+      <th style="width: 25%;">Dimension</th>
+      <th style="width: 25%;">Target Petition Value</th>
+    `;
+    const colWidth = Math.floor(50 / results.length);
 
-    // Render Case 1 Details Box
-    $('#case1-details-box').html(`
-      <h5 class="h6 fw-bold text-light mb-1">${LG.utils.escapeHtml(c1.title || 'Case 1')}</h5>
-      <p class="mb-2 text-warning small">${LG.utils.escapeHtml(c1.court || '')} · ${c1.year || ''}</p>
-      <div class="mb-2"><strong>Case No:</strong> ${LG.utils.escapeHtml(c1.case_no || '—')}</div>
-      <div class="mb-2"><strong>Disposition:</strong> ${LG.utils.escapeHtml(c1.disposition || '—')}</div>
-      <div><strong>Statutes:</strong> ${(c1.section_tags || []).join(', ') || 'General provisions'}</div>
-    `);
+    results.forEach(function (r, idx) {
+      const p = r.precedent || {};
+      headHtml += `
+        <th style="width: ${colWidth}%;">
+          <div class="text-warning">${LG.utils.escapeHtml(p.title || `Precedent ${idx + 1}`)}</div>
+          <span class="badge ${Math.round(r.overall_score) >= 70 ? 'bg-success' : 'badge-gold'} mt-1 font-mono">${Math.round(r.overall_score)}%</span>
+        </th>
+      `;
+    });
+    $matrixHeadRow.html(headHtml);
 
-    // Render Case 2 Details Box
-    $('#case2-details-box').html(`
-      <h5 class="h6 fw-bold text-light mb-1">${LG.utils.escapeHtml(c2.title || 'Precedent Case')}</h5>
-      <p class="mb-2 text-warning small">${LG.utils.escapeHtml(c2.court || '')} · ${c2.year || ''}</p>
-      <div class="mb-2"><strong>Case No:</strong> ${LG.utils.escapeHtml(c2.case_no || '—')}</div>
-      <div class="mb-2"><strong>Precedential Status:</strong> <span class="badge bg-success">${LG.utils.escapeHtml(c2.precedential_status || 'Binding')}</span></div>
-      <div><strong>Statutes:</strong> ${(c2.section_tags || []).join(', ') || 'General provisions'}</div>
-    `);
+    // 4. Matrix Rows by Dimension
+    const baseDimensions = (results[0].dimensions || []);
+    let bodyHtml = '';
+
+    baseDimensions.forEach(function (baseDim, dIdx) {
+      bodyHtml += `
+        <tr>
+          <td>
+            <div class="fw-bold text-light">${LG.utils.escapeHtml(baseDim.dimension_name)}</div>
+            <div class="text-secondary small mt-1" style="font-size: 0.76rem;">${LG.utils.escapeHtml(baseDim.explanation || '')}</div>
+          </td>
+          <td class="font-mono text-light small">${LG.utils.escapeHtml(baseDim.user_value || '—')}</td>
+      `;
+
+      // Render column for each precedent
+      results.forEach(function (r) {
+        const dim = (r.dimensions || [])[dIdx] || {};
+        let stateBadge = 'badge bg-secondary';
+        if (dim.match_state === 'exact') stateBadge = 'badge bg-success';
+        else if (dim.match_state === 'partial') stateBadge = 'badge badge-gold';
+        else if (dim.match_state === 'different') stateBadge = 'badge bg-danger';
+
+        const dScore = Math.round(dim.dimension_score || 0);
+
+        bodyHtml += `
+          <td>
+            <div class="d-flex align-items-center justify-content-between mb-1">
+              <span class="${stateBadge}">${LG.utils.escapeHtml(dim.match_state || 'N/A')}</span>
+              <span class="small font-mono fw-bold text-light">${dScore}%</span>
+            </div>
+            <div class="progress mb-2" style="height: 4px; background-color: #0c1019;">
+              <div class="progress-bar ${dScore >= 70 ? 'bg-success' : 'bg-warning'}" style="width: ${dScore}%;"></div>
+            </div>
+            <div class="font-mono text-secondary small" style="font-size: 0.78rem;">${LG.utils.escapeHtml(dim.precedent_value || '—')}</div>
+          </td>
+        `;
+      });
+
+      bodyHtml += `</tr>`;
+    });
+
+    $matrixBody.html(bodyHtml);
   }
 
   // Event Handlers
-  $compareBtn.on('click', runComparison);
+  $compareBtn.on('click', runMultiComparison);
 
   $swapBtn.on('click', function () {
-    const val1 = $select1.val();
-    const val2 = $select2.val();
-    $select1.val(val2);
-    $select2.val(val1);
-    runComparison();
+    const val1 = $p1Select.val();
+    const val2 = $p2Select.val();
+    $p1Select.val(val2);
+    $p2Select.val(val1);
+    runMultiComparison();
   });
 
-  // Init
+  $printBtn.on('click', function () {
+    window.print();
+  });
+
+  // Initial Load
   loadPrecedents();
 });

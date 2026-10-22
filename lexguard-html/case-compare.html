@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Precedent Comparator · LexGuard</title>
+  <title>Precedent Multi-Comparator &amp; Dimensional Matrix · LexGuard</title>
 
   <!-- Google Fonts & CDN CSS -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -24,60 +24,97 @@
 
   <!-- Main Content -->
   <main class="lg-main">
-    <div class="container-fluid px-0" style="max-width: 1200px;">
+    <div class="container-fluid px-0" style="max-width: 1240px;">
 
       <!-- Page Header -->
       <div class="lg-page-header">
         <div>
           <h1 class="lg-page-title">
             <i class="bi bi-columns-gap text-warning"></i>
-            <span>Precedent Comparator</span>
+            <span>Precedent Multi-Comparator</span>
           </h1>
           <p class="lg-page-subtitle">
-            Deterministic, explainable dimension-by-dimension alignment analysis against landmark precedents from the Madras High Court &amp; Supreme Court.
+            Compare target petitions against 1 to 3 published landmark precedents simultaneously. Deterministic scoring, dimensional matrix, &amp; CrPC/BNSS divergence.
           </p>
         </div>
-        <div>
-          <span class="badge bg-secondary">Deterministic v1.0 Engine</span>
+        <div class="d-flex align-items-center gap-2">
+          <span class="badge bg-secondary">Multi-Precedent Tray (1 to 3 Cases)</span>
+          <button type="button" class="btn btn-sm btn-judicial-outline" id="print-report-btn">
+            <i class="bi bi-printer me-1"></i>Print Report
+          </button>
         </div>
       </div>
 
-      <!-- Case Selection Bar -->
+      <!-- Precedent Selection Tray (Target + 3 Precedent Slots) -->
       <div class="card card-judicial p-4 mb-4 shadow">
-        <div class="row g-3 align-items-end">
-          <div class="col-md-5">
-            <label for="select-case-1" class="form-label text-secondary small fw-semibold">Case 1 (Target / Petition)</label>
-            <select class="form-select" id="select-case-1">
-              <option value="">Choose Case 1...</option>
+        <h2 class="h6 fw-bold text-light mb-3 pb-2 border-bottom border-secondary border-opacity-25 d-flex align-items-center justify-content-between">
+          <span><i class="bi bi-collection text-warning me-2"></i>Multi-Precedent Comparison Tray</span>
+          <small class="text-secondary fw-normal">Select target case and up to 3 comparison authorities</small>
+        </h2>
+
+        <div class="row g-3">
+          <!-- Target Case -->
+          <div class="col-md-6 col-lg-3">
+            <label for="select-target-case" class="form-label text-warning small fw-semibold">
+              <i class="bi bi-file-earmark-person me-1"></i>Target Case / Petition
+            </label>
+            <select class="form-select form-select-sm" id="select-target-case">
+              <option value="">Choose Target Case...</option>
             </select>
           </div>
 
-          <div class="col-md-5">
-            <label for="select-case-2" class="form-label text-secondary small fw-semibold">Case 2 (Registered Precedent)</label>
-            <select class="form-select" id="select-case-2">
-              <option value="">Choose Precedent to Compare...</option>
+          <!-- Precedent Slot 1 -->
+          <div class="col-md-6 col-lg-3">
+            <label for="select-precedent-1" class="form-label text-secondary small fw-semibold">
+              <i class="bi bi-1-circle text-info me-1"></i>Precedent Slot 1
+            </label>
+            <select class="form-select form-select-sm" id="select-precedent-1">
+              <option value="">Choose Precedent 1...</option>
             </select>
           </div>
 
-          <div class="col-md-2">
-            <button type="button" class="btn btn-gold w-100 py-2" id="run-compare-btn">
-              <i class="bi bi-lightning-charge-fill me-1"></i>Compare
-            </button>
+          <!-- Precedent Slot 2 -->
+          <div class="col-md-6 col-lg-3">
+            <label for="select-precedent-2" class="form-label text-secondary small fw-semibold">
+              <i class="bi bi-2-circle text-info me-1"></i>Precedent Slot 2
+            </label>
+            <select class="form-select form-select-sm" id="select-precedent-2">
+              <option value="">Choose Precedent 2...</option>
+            </select>
           </div>
+
+          <!-- Precedent Slot 3 -->
+          <div class="col-md-6 col-lg-3">
+            <label for="select-precedent-3" class="form-label text-secondary small fw-semibold">
+              <i class="bi bi-3-circle text-info me-1"></i>Precedent Slot 3 (Optional)
+            </label>
+            <select class="form-select form-select-sm" id="select-precedent-3">
+              <option value="">Choose Precedent 3...</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="mt-3 pt-3 border-top border-secondary border-opacity-15 d-flex justify-content-end gap-2">
+          <button type="button" class="btn btn-sm btn-judicial-outline" id="swap-cases-btn">
+            <i class="bi bi-arrow-left-right me-1"></i>Swap Slot 1 &amp; 2
+          </button>
+          <button type="button" class="btn btn-gold px-4" id="run-compare-btn">
+            <i class="bi bi-lightning-charge-fill me-1"></i>Run Multi-Comparison
+          </button>
         </div>
       </div>
 
       <!-- Loading Indicator -->
       <div id="compare-loading" class="text-center py-5 d-none">
         <div class="spinner-border text-warning" role="status"></div>
-        <p class="text-secondary small mt-2">Computing dimensional alignment scores...</p>
+        <p class="text-secondary small mt-2">Computing multi-dimensional alignment across precedents...</p>
       </div>
 
       <!-- Comparison Results Container -->
       <div id="compare-results-container" class="d-none">
 
-        <!-- Score & Alignment Summary Card -->
-        <div class="card card-judicial p-4 mb-4 shadow">
+        <!-- Best Match & Score Banner -->
+        <div class="card card-judicial p-4 mb-4 shadow" id="best-match-card">
           <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
             <div class="d-flex align-items-center gap-4">
               <!-- SVG Score Ring -->
@@ -90,74 +127,93 @@
               </div>
 
               <div>
-                <span class="badge badge-gold mb-1" id="score-tier-badge">Alignment Tier</span>
-                <h2 class="h4 fw-bold text-light mb-1" id="score-summary-title">Dimensional Alignment Analysis</h2>
-                <p class="text-secondary small mb-0" id="score-summary-desc">
-                  Based on statutory sections, factual matrix, court hierarchy, and procedural remedy.
+                <span class="badge badge-gold mb-1" id="score-tier-badge">Best Precedential Match</span>
+                <h2 class="h5 fw-bold text-light mb-1" id="best-match-title">Analyzing Precedents...</h2>
+                <p class="text-secondary small mb-0" id="best-match-desc">
+                  Highest factual and statutory alignment across evaluated precedent authorities.
                 </p>
               </div>
             </div>
 
-            <div class="text-end">
-              <button type="button" class="btn btn-sm btn-judicial-outline" id="swap-cases-btn">
-                <i class="bi bi-arrow-left-right me-1"></i>Swap Sides
-              </button>
+            <div class="d-flex gap-2">
+              <div class="text-end" id="precedent-score-pills"></div>
             </div>
           </div>
         </div>
 
-        <!-- 5-Dimensional Alignment Matrix Table -->
+        <!-- Multi-Precedent Comparison Matrix Table -->
         <div class="card card-judicial p-4 mb-4 shadow">
-          <h3 class="h5 fw-bold text-light mb-3">
-            <i class="bi bi-table text-warning me-2"></i>Dimensional Alignment Matrix
+          <h3 class="h6 fw-bold text-light mb-3">
+            <i class="bi bi-table text-warning me-2"></i>Multi-Precedent Dimensional Matrix
           </h3>
           <div class="table-responsive">
-            <table class="table table-dark table-hover small border border-secondary border-opacity-25 align-middle mb-0">
+            <table class="table table-dark table-hover small border border-secondary border-opacity-25 align-middle mb-0" id="multi-matrix-table">
               <thead class="table-dark">
-                <tr class="text-secondary border-bottom border-secondary border-opacity-50">
-                  <th style="width: 22%;">Dimension</th>
-                  <th style="width: 25%;">Target Case Value</th>
-                  <th style="width: 25%;">Precedent Value</th>
-                  <th style="width: 12%;">Match State</th>
-                  <th style="width: 16%;">Alignment Score</th>
+                <tr class="text-secondary border-bottom border-secondary border-opacity-50" id="matrix-head-row">
+                  <th style="width: 25%;">Dimension</th>
+                  <th style="width: 25%;">Target Petition Value</th>
+                  <!-- Dynamic Precedent Columns -->
                 </tr>
               </thead>
               <tbody id="matrix-table-body">
-                <!-- Dynamically populated rows -->
+                <!-- Dynamically populated multi-matrix rows -->
               </tbody>
             </table>
           </div>
         </div>
 
-        <!-- Statutory Divergence & Explanations Panel -->
-        <div class="row g-4 mb-4">
-          <div class="col-lg-6">
-            <div class="card card-judicial p-4 h-100 shadow">
-              <h3 class="h6 fw-bold text-light mb-3 pb-2 border-bottom border-secondary border-opacity-25">
-                <i class="bi bi-file-earmark-diff text-info me-2"></i>Case 1 Details
-              </h3>
-              <div id="case1-details-box" class="small text-secondary lh-base">
-                <!-- Case 1 info -->
-              </div>
-            </div>
-          </div>
-
-          <div class="col-lg-6">
-            <div class="card card-judicial p-4 h-100 shadow">
-              <h3 class="h6 fw-bold text-light mb-3 pb-2 border-bottom border-secondary border-opacity-25">
-                <i class="bi bi-shield-check text-success me-2"></i>Case 2 (Precedent) Details
-              </h3>
-              <div id="case2-details-box" class="small text-secondary lh-base">
-                <!-- Case 2 info -->
-              </div>
-            </div>
+        <!-- Cross-Statutory Matrix (CrPC 1973 vs BNSS 2023) -->
+        <div class="card card-judicial p-4 mb-4 shadow">
+          <h3 class="h6 fw-bold text-light mb-2">
+            <i class="bi bi-arrow-repeat text-info me-2"></i>Cross-Statutory Divergence (CrPC 1973 ↔ BNSS 2023)
+          </h3>
+          <p class="text-secondary small mb-3">
+            Automated statutory concordance mapping older procedural provisions to the new Bharatiya Nagarik Suraksha Sanhita, 2023.
+          </p>
+          <div class="table-responsive">
+            <table class="table table-dark table-striped small border border-secondary border-opacity-25 mb-0">
+              <thead>
+                <tr class="text-secondary">
+                  <th>Previous Provision (CrPC / IPC)</th>
+                  <th>New Provision (BNSS / BNS)</th>
+                  <th>Subject Matter</th>
+                  <th>Judicial Continuity Status</th>
+                </tr>
+              </thead>
+              <tbody id="statutory-divergence-body">
+                <tr>
+                  <td class="font-mono text-warning">Section 482 CrPC</td>
+                  <td class="font-mono text-success">Section 528 BNSS</td>
+                  <td>Saving of inherent powers of High Court</td>
+                  <td><span class="badge bg-success">Binding Precedent Retained</span></td>
+                </tr>
+                <tr>
+                  <td class="font-mono text-warning">Section 438 CrPC</td>
+                  <td class="font-mono text-success">Section 482 BNSS</td>
+                  <td>Direction for grant of anticipatory bail</td>
+                  <td><span class="badge bg-success">Binding Precedent Retained</span></td>
+                </tr>
+                <tr>
+                  <td class="font-mono text-warning">Section 439 CrPC</td>
+                  <td class="font-mono text-success">Section 483 BNSS</td>
+                  <td>Special powers of High Court regarding bail</td>
+                  <td><span class="badge bg-success">Binding Precedent Retained</span></td>
+                </tr>
+                <tr>
+                  <td class="font-mono text-warning">Section 167(2) CrPC</td>
+                  <td class="font-mono text-success">Section 187 BNSS</td>
+                  <td>Default bail &amp; police remand detention limits</td>
+                  <td><span class="badge badge-gold">Modified Statutory Timeframe</span></td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
 
         <!-- Legal Disclaimer -->
         <div class="alert alert-dark small border border-secondary border-opacity-25 text-secondary">
           <i class="bi bi-info-circle-fill text-warning me-2"></i>
-          <strong>Judicial Research Disclaimer:</strong> This comparison score is generated as a structured legal research aid based on transparent factual and statutory dimension matching. It does not predict judicial outcomes, constitute legal advice, or establish binding precedential effect.
+          <strong>Precedent Alignment Disclaimer:</strong> Dimensional scores are generated deterministically based on transparent legal taxonomy matching. They serve as legal research aids and do not constitute judicial predictions or binding ratio decidendi.
         </div>
 
       </div>

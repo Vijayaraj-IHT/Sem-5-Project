@@ -213,16 +213,40 @@ $(document).ready(function () {
   }
 
   /* -------------------------------------------------------------------------
-     Mozilla PDF.js Rendering Engine
+     Advanced Mozilla PDF.js Engine: Selectable TextLayer, Thumbnails & Search
      ------------------------------------------------------------------------- */
+  const $canvasWrapper = $('#canvas-wrapper');
+  const $textLayer = $('#pdf-text-layer');
+  const $thumbnailsDrawer = $('#pdf-thumbnails-drawer');
+  const $thumbnailsList = $('#thumbnails-list');
+  const $matchCounter = $('#pdf-match-counter');
+  const $searchPrevBtn = $('#pdf-search-prev');
+  const $searchNextBtn = $('#pdf-search-next');
+  const $searchInput = $('#pdf-search-input');
+  const $fullscreenBtn = $('#pdf-fullscreen-btn');
+  const $fullscreenIcon = $('#pdf-fullscreen-icon');
+  const $printBtn = $('#pdf-print-btn');
+  const $toggleThumbnailsBtn = $('#pdf-toggle-thumbnails');
+
+  // Search matches state
+  let searchMatches = []; // array of { pageNum, text }
+  let currentMatchIdx = -1;
+
   function renderPage(num) {
     pageRendering = true;
     pdfDoc.getPage(num).then(function (page) {
       const canvas = document.getElementById('pdf-canvas');
       const ctx = canvas.getContext('2d');
       const viewport = page.getViewport({ scale: scale, rotation: rotation });
+
       canvas.height = viewport.height;
       canvas.width = viewport.width;
+
+      // Position text layer exactly over the canvas
+      $textLayer.css({
+        width: viewport.width + 'px',
+        height: viewport.height + 'px'
+      }).empty();
 
       const renderContext = {
         canvasContext: ctx,
@@ -232,6 +256,35 @@ $(document).ready(function () {
       const renderTask = page.render(renderContext);
       renderTask.promise.then(function () {
         pageRendering = false;
+
+        // Render selectable text layer
+        page.getTextContent().then(function (textContent) {
+          const query = $searchInput.val().trim().toLowerCase();
+
+          textContent.items.forEach(function (item) {
+            const tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
+            const fontHeight = Math.sqrt((tx[2] * tx[2]) + (tx[3] * tx[3]));
+
+            const span = document.createElement('span');
+            let itemText = item.str;
+
+            if (query && itemText.toLowerCase().includes(query)) {
+              span.className = 'highlight';
+            }
+
+            span.textContent = itemText;
+            span.style.left = (tx[4]) + 'px';
+            span.style.top = (tx[5] - fontHeight) + 'px';
+            span.style.fontSize = fontHeight + 'px';
+            span.style.fontFamily = item.fontName || 'sans-serif';
+            document.getElementById('pdf-text-layer').appendChild(span);
+          });
+        });
+
+        // Highlight active thumbnail
+        $('.lg-thumbnail-item').removeClass('active');
+        $(`#thumb-page-${num}`).addClass('active');
+
         if (pageNumPending !== null) {
           renderPage(pageNumPending);
           pageNumPending = null;
@@ -262,6 +315,97 @@ $(document).ready(function () {
     queueRenderPage(pageNum);
   }
 
+  /**
+   * Render thumbnail canvas previews in sidebar drawer.
+   */
+  function renderThumbnails() {
+    $thumbnailsList.empty();
+    if (!pdfDoc) return;
+
+    for (let i = 1; i <= Math.min(pdfDoc.numPages, 30); i++) {
+      const pageIndex = i;
+      const thumbId = `thumb-page-${pageIndex}`;
+      const thumbHtml = `
+        <div class="lg-thumbnail-item ${pageIndex === pageNum ? 'active' : ''}" id="${thumbId}" data-page="${pageIndex}">
+          <canvas id="thumb-canvas-${pageIndex}"></canvas>
+          <div class="lg-thumbnail-label">Page ${pageIndex}</div>
+        </div>
+      `;
+      $thumbnailsList.append(thumbHtml);
+
+      // Render miniature page thumbnail
+      pdfDoc.getPage(pageIndex).then(function (page) {
+        const thumbCanvas = document.getElementById(`thumb-canvas-${pageIndex}`);
+        if (!thumbCanvas) return;
+        const ctx = thumbCanvas.getContext('2d');
+        const viewport = page.getViewport({ scale: 0.22 });
+        thumbCanvas.width = viewport.width;
+        thumbCanvas.height = viewport.height;
+        page.render({ canvasContext: ctx, viewport: viewport });
+      });
+    }
+
+    // Click handler on thumbnail to jump to page
+    $('.lg-thumbnail-item').on('click', function () {
+      const targetPage = parseInt($(this).data('page'), 10);
+      if (!isNaN(targetPage)) {
+        pageNum = targetPage;
+        queueRenderPage(pageNum);
+      }
+    });
+  }
+
+  /**
+   * Search within entire PDF document.
+   */
+  function searchInPdf() {
+    const q = $searchInput.val().trim().toLowerCase();
+    searchMatches = [];
+    currentMatchIdx = -1;
+
+    if (!q || !pdfDoc) {
+      $matchCounter.text('');
+      $searchPrevBtn.prop('disabled', true);
+      $searchNextBtn.prop('disabled', true);
+      queueRenderPage(pageNum);
+      return;
+    }
+
+    $matchCounter.text('Searching...');
+    const searchPromises = [];
+
+    for (let i = 1; i <= pdfDoc.numPages; i++) {
+      searchPromises.push(
+        pdfDoc.getPage(i).then(function (p) {
+          return p.getTextContent().then(function (tc) {
+            const pageText = tc.items.map(it => it.str).join(' ').toLowerCase();
+            if (pageText.includes(q)) {
+              return p.pageNumber;
+            }
+            return null;
+          });
+        })
+      );
+    }
+
+    Promise.all(searchPromises).then(function (pagesWithMatches) {
+      searchMatches = pagesWithMatches.filter(Boolean);
+
+      if (searchMatches.length > 0) {
+        currentMatchIdx = 0;
+        $matchCounter.text(`Page ${searchMatches[0]} (1 of ${searchMatches.length})`);
+        $searchPrevBtn.prop('disabled', false);
+        $searchNextBtn.prop('disabled', false);
+        pageNum = searchMatches[0];
+        queueRenderPage(pageNum);
+      } else {
+        $matchCounter.text('0 matches');
+        $searchPrevBtn.prop('disabled', true);
+        $searchNextBtn.prop('disabled', true);
+      }
+    });
+  }
+
   // Load PDF when PDF tab is clicked
   let pdfLoaded = false;
   $('#tab-pdf-btn').on('shown.bs.tab', function () {
@@ -278,11 +422,11 @@ $(document).ready(function () {
         pdfDoc = loadedDoc;
         $pdfTotalPages.text(pdfDoc.numPages);
         $pdfLoading.addClass('d-none');
-        $pdfCanvas.removeClass('d-none');
+        $canvasWrapper.removeClass('d-none');
         renderPage(pageNum);
+        renderThumbnails();
       }).catch(function (err) {
-        console.warn('PDF.js failed to load stream, attempting raw text view:', err);
-        // Fallback to raw text
+        console.warn('PDF.js stream issue, falling back:', err);
         $pdfLoading.addClass('d-none');
         if (currentCase && (currentCase.raw_text || currentCase.summary)) {
           $pdfFallbackText.removeClass('d-none').text(currentCase.raw_text || currentCase.summary);
@@ -329,6 +473,58 @@ $(document).ready(function () {
   $('#pdf-rotate').on('click', function () {
     rotation = (rotation + 90) % 360;
     if (pdfDoc) queueRenderPage(pageNum);
+  });
+
+  // Search Input Handler
+  $searchInput.on('keydown', function (e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      searchInPdf();
+    }
+  });
+
+  $searchNextBtn.on('click', function () {
+    if (searchMatches.length === 0) return;
+    currentMatchIdx = (currentMatchIdx + 1) % searchMatches.length;
+    pageNum = searchMatches[currentMatchIdx];
+    $matchCounter.text(`Page ${pageNum} (${currentMatchIdx + 1} of ${searchMatches.length})`);
+    queueRenderPage(pageNum);
+  });
+
+  $searchPrevBtn.on('click', function () {
+    if (searchMatches.length === 0) return;
+    currentMatchIdx = (currentMatchIdx - 1 + searchMatches.length) % searchMatches.length;
+    pageNum = searchMatches[currentMatchIdx];
+    $matchCounter.text(`Page ${pageNum} (${currentMatchIdx + 1} of ${searchMatches.length})`);
+    queueRenderPage(pageNum);
+  });
+
+  // Fullscreen Mode Handler
+  $fullscreenBtn.on('click', function () {
+    const container = document.getElementById('pdf-main-container');
+    if (!document.fullscreenElement) {
+      if (container.requestFullscreen) {
+        container.requestFullscreen();
+      }
+      $(container).addClass('fullscreen');
+      $fullscreenIcon.attr('class', 'bi bi-fullscreen-exit');
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+      $(container).removeClass('fullscreen');
+      $fullscreenIcon.attr('class', 'bi bi-fullscreen');
+    }
+  });
+
+  // Print Button Handler
+  $printBtn.on('click', function () {
+    window.print();
+  });
+
+  // Toggle Thumbnails Drawer
+  $toggleThumbnailsBtn.on('click', function () {
+    $thumbnailsDrawer.toggleClass('collapsed');
   });
 
   // Bookmark Button Handler
