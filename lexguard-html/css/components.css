@@ -1,0 +1,493 @@
+/* ==============================================================================
+   LexGuard — UI Component Styles (components.css)
+   Semester 5 Project · LexGuard Judicial Repository & Verification Platform
+   ============================================================================== */
+
+/* Layout Shell */
+.lg-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Fixed Top Navbar */
+.lg-navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--lg-navbar-h);
+  background-color: rgba(11, 15, 23, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--bs-border-color);
+  z-index: 1030;
+  display: flex;
+  align-items: center;
+  padding: 0 1.5rem;
+}
+
+.lg-navbar .navbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: #f8fafc;
+  text-decoration: none;
+  letter-spacing: -0.01em;
+}
+
+.lg-navbar .navbar-brand .brand-emblem {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #0b0f17;
+  font-size: 1.15rem;
+  font-weight: 800;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+}
+
+/* Fixed Left Sidebar */
+.lg-sidebar {
+  position: fixed;
+  top: var(--lg-navbar-h);
+  left: 0;
+  bottom: 0;
+  width: var(--lg-sidebar-w);
+  background-color: #0c1019;
+  border-right: 1px solid var(--bs-border-color);
+  z-index: 1020;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  transition: transform 0.25s ease-in-out;
+}
+
+.lg-sidebar-section {
+  padding: 1.25rem 1rem 0.5rem;
+}
+
+.lg-sidebar-heading {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #64748b;
+  margin-bottom: 0.5rem;
+  padding-left: 0.75rem;
+}
+
+.lg-sidebar-nav {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.lg-sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.875rem;
+  color: #94a3b8;
+  text-decoration: none;
+  border-radius: 0.5rem;
+  font-size: 0.88rem;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+.lg-sidebar-link i {
+  font-size: 1.1rem;
+  color: #64748b;
+  transition: color 0.15s ease;
+}
+
+.lg-sidebar-link:hover {
+  background-color: rgba(148, 163, 184, 0.08);
+  color: #f1f5f9;
+}
+
+.lg-sidebar-link:hover i {
+  color: var(--lg-gold);
+}
+
+.lg-sidebar-link.active {
+  background-color: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+  font-weight: 600;
+  border-left: 3px solid var(--lg-gold);
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.lg-sidebar-link.active i {
+  color: #fbbf24;
+}
+
+.lg-sidebar-badge {
+  margin-left: auto;
+  font-size: 0.7rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background-color: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+}
+
+/* Main Content Area */
+.lg-main {
+  margin-left: var(--lg-sidebar-w);
+  margin-top: var(--lg-navbar-h);
+  padding: 1.75rem 2rem 3rem;
+  flex: 1;
+  min-height: calc(100vh - var(--lg-navbar-h));
+  transition: margin-left 0.25s ease-in-out;
+}
+
+/* Standalone Auth Pages (No Sidebar) */
+.lg-auth-layout .lg-main {
+  margin-left: 0;
+  margin-top: 0;
+  padding: 2rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+/* Page Header */
+.lg-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.lg-page-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #f8fafc;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.lg-page-subtitle {
+  color: #94a3b8;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+/* Court Badges */
+.badge-court-madras {
+  background-color: rgba(129, 140, 248, 0.15);
+  color: #c7d2fe;
+  border: 1px solid rgba(129, 140, 248, 0.3);
+  font-weight: 500;
+}
+
+.badge-court-madurai {
+  background-color: rgba(56, 189, 248, 0.15);
+  color: #bae6fd;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  font-weight: 500;
+}
+
+.badge-court-supreme {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: #fde68a;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  font-weight: 600;
+}
+
+/* Verification Status Badges */
+.badge-status-published,
+.badge-status-verified {
+  background-color: rgba(52, 211, 153, 0.15);
+  color: #6ee7b7;
+  border: 1px solid rgba(52, 211, 153, 0.35);
+}
+
+.badge-status-pending {
+  background-color: rgba(251, 191, 36, 0.15);
+  color: #fde68a;
+  border: 1px solid rgba(251, 191, 36, 0.35);
+}
+
+.badge-status-rejected {
+  background-color: rgba(248, 113, 113, 0.15);
+  color: #fca5a5;
+  border: 1px solid rgba(248, 113, 113, 0.35);
+}
+
+/* Case Card (Search & Repository) */
+.lg-case-card {
+  background-color: #111827;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.75rem;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1rem;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  position: relative;
+}
+
+.lg-case-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(245, 158, 11, 0.4);
+  box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.4);
+}
+
+.lg-case-card .case-title {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #f8fafc;
+  text-decoration: none;
+  display: inline-block;
+  margin-bottom: 0.4rem;
+}
+
+.lg-case-card .case-title:hover {
+  color: var(--lg-gold);
+}
+
+.lg-case-card .case-snippet {
+  font-size: 0.88rem;
+  color: #94a3b8;
+  line-height: 1.5;
+  margin: 0.5rem 0 0.85rem;
+}
+
+.lg-case-card .case-snippet mark {
+  background-color: rgba(245, 158, 11, 0.25);
+  color: #fde68a;
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+}
+
+/* Metric KPI Cards (Admin & Verification) */
+.lg-metric-card {
+  background: linear-gradient(145deg, #111827 0%, #0f172a 100%);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.lg-metric-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+}
+
+.lg-metric-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #f8fafc;
+  line-height: 1.2;
+}
+
+.lg-metric-label {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+/* Split Screen Layout (Comparison & Draft) */
+.lg-split-container {
+  display: flex;
+  gap: 1.25rem;
+  min-height: calc(100vh - var(--lg-navbar-h) - 7rem);
+}
+
+.lg-split-pane {
+  flex: 1;
+  background-color: #111827;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.lg-split-header {
+  padding: 0.875rem 1.25rem;
+  background-color: #0c1019;
+  border-bottom: 1px solid var(--bs-border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.lg-split-body {
+  padding: 1.25rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* Circular SVG Score Ring */
+.lg-score-ring {
+  width: 80px;
+  height: 80px;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lg-score-ring svg {
+  transform: rotate(-90deg);
+  width: 100%;
+  height: 100%;
+}
+
+.lg-score-ring circle {
+  fill: transparent;
+  stroke-width: 6;
+  stroke-linecap: round;
+}
+
+.lg-score-ring .circle-bg {
+  stroke: rgba(148, 163, 184, 0.15);
+}
+
+.lg-score-ring .circle-progress {
+  stroke: var(--lg-gold);
+  stroke-dasharray: 220;
+  stroke-dashoffset: 220;
+  transition: stroke-dashoffset 0.8s ease-in-out;
+}
+
+.lg-score-ring .score-text {
+  position: absolute;
+  font-weight: 700;
+  font-size: 1rem;
+  color: #f8fafc;
+}
+
+/* File Dropzone (Verification & Upload) */
+.lg-dropzone {
+  border: 2px dashed rgba(148, 163, 184, 0.3);
+  background-color: rgba(15, 23, 42, 0.5);
+  border-radius: 1rem;
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.lg-dropzone:hover,
+.lg-dropzone.dragover {
+  border-color: var(--lg-gold);
+  background-color: rgba(245, 158, 11, 0.05);
+}
+
+.lg-dropzone-icon {
+  font-size: 2.5rem;
+  color: var(--lg-gold);
+  margin-bottom: 0.75rem;
+}
+
+/* PDF Viewer Controls & Canvas Viewport */
+.lg-pdf-viewport {
+  background-color: #0b0f17;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.5rem;
+  min-height: 600px;
+  position: relative;
+  overflow: auto;
+  text-align: center;
+  padding: 1rem;
+}
+
+.lg-pdf-viewport canvas {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+  margin: 0 auto;
+  max-width: 100%;
+  height: auto !important;
+}
+
+.lg-pdf-toolbar {
+  background-color: #0f172a;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* SHA-256 Seal Ribbon */
+.lg-seal-ribbon {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 1rem;
+  background: linear-gradient(90deg, rgba(52, 211, 153, 0.1) 0%, rgba(15, 23, 42, 0.8) 100%);
+  border: 1px solid rgba(52, 211, 153, 0.3);
+  border-radius: 0.5rem;
+  font-size: 0.82rem;
+  color: #e2e8f0;
+}
+
+.lg-seal-ribbon.tampered {
+  background: linear-gradient(90deg, rgba(248, 113, 113, 0.15) 0%, rgba(15, 23, 42, 0.8) 100%);
+  border-color: rgba(248, 113, 113, 0.4);
+  color: #fca5a5;
+}
+
+/* Toast Notification Container */
+.lg-toast-container {
+  position: fixed;
+  top: calc(var(--lg-navbar-h) + 1rem);
+  right: 1.5rem;
+  z-index: 1090;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.toast.lg-toast {
+  background-color: #111827;
+  color: #f8fafc;
+  border: 1px solid var(--bs-border-color);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  border-radius: 0.5rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 991.98px) {
+  .lg-sidebar {
+    transform: translateX(-100%);
+  }
+  .lg-sidebar.show {
+    transform: translateX(0);
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
+  }
+  .lg-main {
+    margin-left: 0;
+  }
+  .lg-split-container {
+    flex-direction: column;
+  }
+}

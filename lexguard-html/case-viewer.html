@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Case Viewer · LexGuard Judicial Platform</title>
+
+  <!-- Google Fonts & CDN CSS -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css">
+
+  <!-- LexGuard Styles -->
+  <link rel="stylesheet" href="css/lexguard.css">
+  <link rel="stylesheet" href="css/components.css">
+</head>
+<body data-active-page="viewer">
+
+  <!-- Shared Top Navbar & Left Sidebar slots -->
+  <div id="navbar-slot"></div>
+  <div id="sidebar-slot"></div>
+
+  <!-- Main Content -->
+  <main class="lg-main">
+    <div class="container-fluid px-0" style="max-width: 1200px;">
+
+      <!-- Top Back Navigation & Actions -->
+      <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+        <a href="search.html" class="btn btn-sm btn-judicial-outline">
+          <i class="bi bi-arrow-left me-1"></i>Back to Search
+        </a>
+        <div class="d-flex align-items-center gap-2">
+          <a href="#" class="btn btn-sm btn-gold" id="action-download-btn" target="_blank">
+            <i class="bi bi-download me-1"></i>Download Official Copy
+          </a>
+          <a href="#" class="btn btn-sm btn-judicial-outline" id="action-compare-btn">
+            <i class="bi bi-columns-gap me-1"></i>Compare Precedent
+          </a>
+          <button type="button" class="btn btn-sm btn-judicial-outline" id="action-bookmark-btn" title="Save Bookmark">
+            <i class="bi bi-bookmark text-warning"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Case Title & Identification Header -->
+      <div class="card card-judicial p-4 mb-3 shadow">
+        <div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-2">
+          <div>
+            <span class="badge bg-secondary mb-2" id="case-header-court">Court</span>
+            <h1 class="h3 font-serif fw-bold text-light mb-1" id="case-header-title">Loading Judgment...</h1>
+            <div class="d-flex flex-wrap align-items-center gap-3 small text-secondary">
+              <span id="case-header-caseno"><i class="bi bi-file-earmark-text me-1"></i>Case No: —</span>
+              <span id="case-header-date"><i class="bi bi-calendar3 me-1"></i>Date: —</span>
+              <span id="case-header-bench"><i class="bi bi-person-badge me-1"></i>Bench: —</span>
+              <span id="case-header-cnr"><i class="bi bi-upc-scan me-1"></i>CNR: —</span>
+            </div>
+          </div>
+          <div>
+            <span class="badge badge-gold fs-6" id="case-header-outcome">—</span>
+          </div>
+        </div>
+
+        <!-- SHA-256 Seal Ribbon -->
+        <div class="lg-seal-ribbon mt-3" id="case-seal-ribbon">
+          <i class="bi bi-shield-fill-check text-success fs-5"></i>
+          <div class="flex-grow-1">
+            <div class="fw-bold text-success small">Cryptographically Verified Judicial Record</div>
+            <div class="small font-mono text-secondary text-break" style="font-size: 0.76rem;" id="case-seal-hash">
+              SHA-256: Computing...
+            </div>
+          </div>
+          <a href="#" class="btn btn-xs btn-judicial-outline" id="case-verify-link">
+            <i class="bi bi-search me-1"></i>Inspect Audit Chain
+          </a>
+        </div>
+      </div>
+
+      <!-- 4-Tab Navigation Bar -->
+      <ul class="nav nav-tabs border-secondary border-opacity-25 mb-3" id="caseTab" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active text-light fw-semibold" id="tab-overview-btn" data-bs-toggle="tab" data-bs-target="#tab-overview" type="button" role="tab">
+            <i class="bi bi-card-text me-1 text-warning"></i>Structure &amp; Overview
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link text-light fw-semibold" id="tab-pdf-btn" data-bs-toggle="tab" data-bs-target="#tab-pdf" type="button" role="tab">
+            <i class="bi bi-file-pdf me-1 text-danger"></i>Exact PDF Viewer
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link text-light fw-semibold" id="tab-cis-btn" data-bs-toggle="tab" data-bs-target="#tab-cis" type="button" role="tab">
+            <i class="bi bi-database me-1 text-info"></i>CIS Extraction &amp; Raw
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link text-light fw-semibold" id="tab-precedents-btn" data-bs-toggle="tab" data-bs-target="#tab-precedents" type="button" role="tab">
+            <i class="bi bi-diagram-3 me-1 text-success"></i>Precedent Network
+          </button>
+        </li>
+      </ul>
+
+      <!-- Tab Content Area -->
+      <div class="tab-content" id="caseTabContent">
+
+        <!-- TAB 1: Structure & Overview -->
+        <div class="tab-pane fade show active" id="tab-overview" role="tabpanel">
+          <div class="row g-3">
+            <div class="col-lg-8">
+              <!-- Ratio Decidendi -->
+              <div class="card card-judicial p-4 mb-3 border-warning border-opacity-30">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                  <i class="bi bi-quote fs-4 text-warning"></i>
+                  <h2 class="h5 fw-bold text-warning mb-0">Ratio Decidendi</h2>
+                </div>
+                <p class="text-light fs-6 font-serif fst-italic lh-base mb-0" id="overview-ratio">
+                  Loading ratio decidendi...
+                </p>
+              </div>
+
+              <!-- Facts & Context Summary -->
+              <div class="card card-judicial p-4 mb-3">
+                <h2 class="h6 fw-bold text-light mb-2"><i class="bi bi-journal-text text-secondary me-2"></i>Facts &amp; Background</h2>
+                <div class="text-secondary small lh-base" id="overview-summary">
+                  Loading summary...
+                </div>
+              </div>
+
+              <!-- Issues Framed & Principles -->
+              <div class="card card-judicial p-4">
+                <h2 class="h6 fw-bold text-light mb-2"><i class="bi bi-list-check text-secondary me-2"></i>Issues Framed &amp; Ruling</h2>
+                <div class="text-secondary small lh-base" id="overview-issues">
+                  Loading issues...
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-4">
+              <!-- Legal Metadata Panel -->
+              <div class="card card-judicial p-3 mb-3">
+                <h3 class="h6 fw-bold text-light mb-3 pb-2 border-bottom border-secondary border-opacity-25">
+                  <i class="bi bi-info-circle text-warning me-1"></i>Case Parameters
+                </h3>
+                <dl class="row small mb-0">
+                  <dt class="col-5 text-secondary">Jurisdiction:</dt>
+                  <dd class="col-7 text-light" id="meta-court">—</dd>
+
+                  <dt class="col-5 text-secondary">Case Type:</dt>
+                  <dd class="col-7 text-light" id="meta-casetype">—</dd>
+
+                  <dt class="col-5 text-secondary">Filing Year:</dt>
+                  <dd class="col-7 text-light" id="meta-year">—</dd>
+
+                  <dt class="col-5 text-secondary">Disposition:</dt>
+                  <dd class="col-7 text-light" id="meta-outcome">—</dd>
+
+                  <dt class="col-5 text-secondary">Verification:</dt>
+                  <dd class="col-7" id="meta-status">—</dd>
+                </dl>
+              </div>
+
+              <!-- Statutory Sections & Acts Cited -->
+              <div class="card card-judicial p-3 mb-3">
+                <h3 class="h6 fw-bold text-light mb-2"><i class="bi bi-bookmark-check text-info me-1"></i>Acts &amp; Sections</h3>
+                <div class="d-flex flex-wrap gap-1 mt-2" id="overview-tags">
+                  <span class="text-secondary small">No statutes extracted</span>
+                </div>
+              </div>
+
+              <!-- Citator Summary Card -->
+              <div class="card card-judicial p-3">
+                <h3 class="h6 fw-bold text-light mb-2"><i class="bi bi-quote text-success me-1"></i>Standard Citation</h3>
+                <div class="p-2 rounded bg-dark border border-secondary border-opacity-25 font-mono small text-warning mb-2" id="overview-citation-box">
+                  —
+                </div>
+                <button type="button" class="btn btn-xs btn-judicial-outline w-100" id="overview-copy-citation-btn">
+                  <i class="bi bi-clipboard me-1"></i>Copy Citation
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 2: Exact Mozilla PDF.js Viewer -->
+        <div class="tab-pane fade" id="tab-pdf" role="tabpanel">
+          <div class="card card-judicial p-3">
+            <!-- PDF Viewer Toolbar -->
+            <div class="lg-pdf-toolbar">
+              <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-sm btn-judicial-outline" id="pdf-prev-page">
+                  <i class="bi bi-chevron-left"></i>
+                </button>
+                <span class="text-light small">
+                  Page <input type="number" id="pdf-current-page" class="form-control form-control-sm d-inline-block text-center" style="width: 50px; height: 26px; padding: 2px;" value="1" min="1"> of <span id="pdf-total-pages">1</span>
+                </span>
+                <button type="button" class="btn btn-sm btn-judicial-outline" id="pdf-next-page">
+                  <i class="bi bi-chevron-right"></i>
+                </button>
+              </div>
+
+              <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-sm btn-judicial-outline" id="pdf-zoom-out" title="Zoom Out">
+                  <i class="bi bi-zoom-out"></i>
+                </button>
+                <span class="text-secondary small fw-semibold" id="pdf-zoom-level">100%</span>
+                <button type="button" class="btn btn-sm btn-judicial-outline" id="pdf-zoom-in" title="Zoom In">
+                  <i class="bi bi-zoom-in"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-judicial-outline" id="pdf-rotate" title="Rotate Clockwise">
+                  <i class="bi bi-arrow-clockwise"></i>
+                </button>
+              </div>
+
+              <!-- Keyword Search inside Document -->
+              <div class="input-group input-group-sm" style="max-width: 250px;">
+                <input type="text" class="form-control" id="pdf-search-input" placeholder="Search in text...">
+                <button class="btn btn-judicial-outline" type="button" id="pdf-search-btn">
+                  <i class="bi bi-search"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Canvas Viewport for PDF.js Rendering -->
+            <div class="lg-pdf-viewport" id="pdf-viewport">
+              <div id="pdf-loading" class="text-center py-5">
+                <div class="spinner-border text-warning" role="status"></div>
+                <p class="text-secondary small mt-2">Loading official judicial document stream...</p>
+              </div>
+              <canvas id="pdf-canvas" class="d-none"></canvas>
+
+              <!-- Fallback text view if document is pure text -->
+              <div id="pdf-fallback-text" class="text-start d-none p-3 font-mono text-light" style="white-space: pre-wrap; font-size: 0.85rem; line-height: 1.6;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: CIS Raw Metadata -->
+        <div class="tab-pane fade" id="tab-cis" role="tabpanel">
+          <div class="card card-judicial p-4">
+            <h2 class="h5 fw-bold text-light mb-3">Case Information System (CIS) Extraction Fields</h2>
+            <div class="table-responsive">
+              <table class="table table-dark table-striped small border border-secondary border-opacity-25">
+                <tbody id="cis-table-body">
+                  <tr><td class="text-secondary" style="width: 200px;">CNR Number</td><td id="cis-cnr">—</td></tr>
+                  <tr><td class="text-secondary">CIS Case Type</td><td id="cis-casetype">—</td></tr>
+                  <tr><td class="text-secondary">Registration Number</td><td id="cis-regno">—</td></tr>
+                  <tr><td class="text-secondary">Filing Date</td><td id="cis-filingdate">—</td></tr>
+                  <tr><td class="text-secondary">Decision Date</td><td id="cis-decisiondate">—</td></tr>
+                  <tr><td class="text-secondary">Petitioner</td><td id="cis-petitioner">—</td></tr>
+                  <tr><td class="text-secondary">Respondent</td><td id="cis-respondent">—</td></tr>
+                  <tr><td class="text-secondary">Coram / Bench</td><td id="cis-coram">—</td></tr>
+                  <tr><td class="text-secondary">Police Station / FIR No</td><td id="cis-fir">—</td></tr>
+                  <tr><td class="text-secondary">Lower Court Details</td><td id="cis-lowercourt">—</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3 class="h6 fw-bold text-light mt-4 mb-2">Raw Extracted Structure (JSON)</h3>
+            <pre class="p-3 bg-dark rounded border border-secondary border-opacity-25 text-info font-mono small" style="max-height: 350px; overflow-y: auto;" id="cis-raw-json">
+Loading JSON...
+            </pre>
+          </div>
+        </div>
+
+        <!-- TAB 4: Precedent Network -->
+        <div class="tab-pane fade" id="tab-precedents" role="tabpanel">
+          <div class="card card-judicial p-4">
+            <h2 class="h5 fw-bold text-light mb-1">Precedents &amp; Citator Graph</h2>
+            <p class="text-secondary small mb-4">Judgments cited within this decision and downstream authoritative citations.</p>
+
+            <div id="precedents-list">
+              <div class="text-center py-4 text-secondary small">
+                <div class="spinner-border spinner-border-sm text-warning me-2"></div>
+                Analyzing precedent citator graph...
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+
+  <!-- CDN JS Dependencies -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+  <!-- LexGuard Core & Page Scripts -->
+  <script src="js/lexguard-core.js"></script>
+  <script src="js/lexguard-auth.js"></script>
+  <script src="js/lexguard-toast.js"></script>
+  <script src="js/lexguard-api.js"></script>
+  <script src="js/lexguard-nav.js"></script>
+  <script src="js/pages/case-viewer.js"></script>
+</body>
+</html>

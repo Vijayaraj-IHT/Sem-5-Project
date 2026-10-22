@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>LexGuard Judicial Platform</title>
+  <script src="js/lexguard-core.js"></script>
+  <script src="js/lexguard-auth.js"></script>
+  <script>
+    (function () {
+      if (LG.session.isAuthenticated()) {
+        if (LG.session.hasRole(['staff', 'court_staff', 'senior_staff'])) {
+          window.location.replace('admin.html');
+        } else {
+          window.location.replace('search.html');
+        }
+      } else {
+        window.location.replace('search.html');
+      }
+    })();
+  </script>
+</head>
+<body style="background:#0b0f17; color:#94a3b8; font-family:sans-serif; text-align:center; padding-top:20vh;">
+  <p>Loading LexGuard Judicial Platform...</p>
+</body>
+</html>

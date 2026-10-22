@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Draft Assistant · LexGuard</title>
+
+  <!-- Google Fonts & CDN CSS -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css">
+
+  <!-- LexGuard Styles -->
+  <link rel="stylesheet" href="css/lexguard.css">
+  <link rel="stylesheet" href="css/components.css">
+</head>
+<body data-active-page="draft">
+
+  <!-- Shared Top Navbar & Left Sidebar slots -->
+  <div id="navbar-slot"></div>
+  <div id="sidebar-slot"></div>
+
+  <!-- Main Content -->
+  <main class="lg-main">
+    <div class="container-fluid px-0">
+
+      <!-- Page Header -->
+      <div class="lg-page-header">
+        <div>
+          <h1 class="lg-page-title">
+            <i class="bi bi-pen text-warning"></i>
+            <span>AI Petition Draft Assistant</span>
+          </h1>
+          <p class="lg-page-subtitle">
+            Split-screen petition editor with automated precedent gap analysis, missing statutory arguments identification, and hallucination-free citation grounding.
+          </p>
+        </div>
+        <div>
+          <span class="badge bg-primary bg-opacity-25 text-primary border border-primary border-opacity-50 fs-7 px-3 py-2">
+            <i class="bi bi-shield-lock me-1"></i>Client-Grounded Precedents Only
+          </span>
+        </div>
+      </div>
+
+      <!-- Split Screen Container -->
+      <div class="lg-split-container">
+
+        <!-- LEFT PANE: Petition Editor -->
+        <div class="lg-split-pane shadow">
+          <div class="lg-split-header">
+            <div class="d-flex align-items-center gap-2">
+              <i class="bi bi-file-earmark-text text-warning fs-5"></i>
+              <span class="fw-bold text-light small">Petition Text Editor</span>
+            </div>
+
+            <!-- Templates Dropdown -->
+            <div class="d-flex align-items-center gap-2">
+              <select class="form-select form-select-sm" id="template-select" style="max-width: 220px;">
+                <option value="">Load Sample Template...</option>
+                <option value="quash">Sec. 482 CrPC Quashing FIR</option>
+                <option value="bail">Anticipatory Bail Application</option>
+                <option value="writ">Article 226 Mandamus Writ</option>
+              </select>
+              <button type="button" class="btn btn-sm btn-gold d-flex align-items-center gap-1" id="run-analyze-btn">
+                <i class="bi bi-lightning-charge-fill"></i>
+                <span>Analyze Gap</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="lg-split-body d-flex flex-column p-0">
+            <textarea id="petition-editor" class="form-control font-serif fs-6 border-0 rounded-0 flex-grow-1 p-3 text-light" style="background-color: #0b0f17; resize: none; min-height: 480px; line-height: 1.7;" placeholder="Draft or paste your petition text here... (e.g. IN THE HIGH COURT OF JUDICATURE AT MADRAS... Criminal Miscellaneous Petition under Section 482 CrPC...)"></textarea>
+
+            <!-- Editor Stats Footer -->
+            <div class="p-2 px-3 bg-dark border-top border-secondary border-opacity-15 d-flex align-items-center justify-content-between small text-secondary">
+              <div class="d-flex gap-3">
+                <span>Words: <strong class="text-light" id="word-count">0</strong></span>
+                <span>Characters: <strong class="text-light" id="char-count">0</strong></span>
+              </div>
+              <div>
+                <span>Standard CIS Filing Format</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT PANE: AI Gap Analysis & Citations -->
+        <div class="lg-split-pane shadow">
+          <div class="lg-split-header">
+            <div class="d-flex align-items-center gap-2">
+              <i class="bi bi-magic text-warning fs-5"></i>
+              <span class="fw-bold text-light small">AI Gap Analysis &amp; Citator Grounding</span>
+            </div>
+            <div>
+              <span class="badge bg-secondary small" id="analysis-status-badge">Awaiting Draft</span>
+            </div>
+          </div>
+
+          <div class="lg-split-body p-3" id="analysis-body">
+
+            <!-- Initial Empty State -->
+            <div id="analysis-empty-state" class="text-center py-5">
+              <i class="bi bi-journal-check text-secondary display-6 mb-3"></i>
+              <h5 class="text-light">No Analysis Run Yet</h5>
+              <p class="text-secondary small mb-3" style="max-width: 400px; margin: 0 auto;">
+                Paste or draft your petition on the left pane and click <strong>Analyze Gap</strong> to detect missing statutory grounds and receive grounded precedent citations.
+              </p>
+              <button type="button" class="btn btn-sm btn-judicial-outline" id="load-sample-btn">
+                <i class="bi bi-file-earmark-arrow-down me-1"></i>Load Sample Section 482 Petition
+              </button>
+            </div>
+
+            <!-- Loading Spinner -->
+            <div id="analysis-loading" class="text-center py-5 d-none">
+              <div class="spinner-border text-warning mb-2" role="status"></div>
+              <p class="text-secondary small mb-0">Analyzing factual matrix &amp; comparing against Madras HC &amp; SC precedents...</p>
+            </div>
+
+            <!-- Results Section -->
+            <div id="analysis-results" class="d-none">
+
+              <!-- Identified Grounds Card -->
+              <div class="card card-judicial p-3 mb-3 border-success border-opacity-30">
+                <h3 class="h6 fw-bold text-success mb-2 d-flex align-items-center gap-2">
+                  <i class="bi bi-check-circle-fill"></i>
+                  <span>Identified Grounds &amp; Submissions</span>
+                </h3>
+                <ul class="mb-0 small text-light ps-3" id="identified-grounds-list"></ul>
+              </div>
+
+              <!-- Missing Arguments / Gap Card -->
+              <div class="card card-judicial p-3 mb-3 border-warning border-opacity-40">
+                <h3 class="h6 fw-bold text-warning mb-2 d-flex align-items-center gap-2">
+                  <i class="bi bi-exclamation-triangle-fill"></i>
+                  <span>Missing Arguments &amp; Recommended Omissions</span>
+                </h3>
+                <ul class="mb-0 small text-light ps-3" id="missing-arguments-list"></ul>
+              </div>
+
+              <!-- Suggested Sections Card -->
+              <div class="card card-judicial p-3 mb-3">
+                <h3 class="h6 fw-bold text-light mb-2 d-flex align-items-center gap-2">
+                  <i class="bi bi-bookmark-plus text-info"></i>
+                  <span>Suggested Statutory Sections</span>
+                </h3>
+                <div class="d-flex flex-wrap gap-1" id="suggested-sections-box"></div>
+              </div>
+
+              <!-- Grounded Precedent Citations -->
+              <div class="card card-judicial p-3 mb-3">
+                <h3 class="h6 fw-bold text-light mb-3 d-flex align-items-center gap-2">
+                  <i class="bi bi-quote text-warning"></i>
+                  <span>Grounded Precedent Citations</span>
+                </h3>
+                <div id="citations-list" class="d-flex flex-column gap-2"></div>
+              </div>
+
+              <!-- Anti-Hallucination Disclaimer -->
+              <div class="alert alert-dark small border border-secondary border-opacity-25 text-secondary mb-0">
+                <i class="bi bi-shield-check text-success me-1"></i>
+                <span id="analysis-disclaimer">AI suggestions are generated as research references and require independent verification. Every citation links directly to a verified repository judgment.</span>
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+
+  <!-- CDN JS Dependencies -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+
+  <!-- LexGuard Core & Page Scripts -->
+  <script src="js/lexguard-core.js"></script>
+  <script src="js/lexguard-auth.js"></script>
+  <script src="js/lexguard-toast.js"></script>
+  <script src="js/lexguard-api.js"></script>
+  <script src="js/lexguard-nav.js"></script>
+  <script src="js/pages/draft-assistant.js"></script>
+</body>
+</html>

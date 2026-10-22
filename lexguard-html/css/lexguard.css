@@ -1,0 +1,162 @@
+/* ==============================================================================
+   LexGuard — Judicial Theme & Bootstrap Variable Overrides (lexguard.css)
+   Semester 5 Project · LexGuard Judicial Repository & Verification Platform
+   ============================================================================== */
+
+:root {
+  /* Slate & Judicial Navy Palette */
+  --bs-body-bg: #0b0f17;
+  --bs-body-color: #e2e8f0;
+  --bs-body-color-rgb: 226, 232, 240;
+  --bs-border-color: rgba(148, 163, 184, 0.15);
+  --bs-border-color-translucent: rgba(148, 163, 184, 0.1);
+
+  /* Primary Accent: Indigo / Judicial Gold */
+  --bs-primary: #818cf8;
+  --bs-primary-rgb: 129, 140, 248;
+  --bs-primary-text-emphasis: #c7d2fe;
+  --bs-primary-bg-subtle: rgba(129, 140, 248, 0.12);
+  --bs-primary-border-subtle: rgba(129, 140, 248, 0.3);
+
+  /* Surface Cards & Modals */
+  --bs-card-bg: #111827;
+  --bs-card-border-color: rgba(148, 163, 184, 0.14);
+  --bs-secondary-bg: #1e293b;
+  --bs-tertiary-bg: #0f172a;
+  --bs-dark: #0b0f17;
+  --bs-dark-rgb: 11, 15, 23;
+
+  /* Status Colors */
+  --bs-success: #34d399;
+  --bs-success-rgb: 52, 211, 153;
+  --bs-danger: #f87171;
+  --bs-danger-rgb: 248, 113, 113;
+  --bs-warning: #fbbf24;
+  --bs-warning-rgb: 251, 191, 36;
+  --bs-info: #38bdf8;
+  --bs-info-rgb: 56, 189, 248;
+
+  /* Custom LexGuard Tokens */
+  --lg-gold: #f59e0b;
+  --lg-gold-hover: #d97706;
+  --lg-gold-subtle: rgba(245, 158, 11, 0.12);
+  --lg-gold-border: rgba(245, 158, 11, 0.3);
+
+  --lg-sidebar-w: 256px;
+  --lg-navbar-h: 64px;
+
+  /* Typography */
+  --lg-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --lg-font-serif: 'Playfair Display', Georgia, Cambria, 'Times New Roman', serif;
+  --lg-font-mono: 'JetBrains Mono', 'Fira Code', Menlo, Monaco, Consolas, monospace;
+}
+
+/* Light Theme Variables */
+[data-theme="light"] {
+  --bs-body-bg: #f8fafc;
+  --bs-body-color: #0f172a;
+  --bs-body-color-rgb: 15, 23, 42;
+  --bs-border-color: rgba(148, 163, 184, 0.25);
+  --bs-card-bg: #ffffff;
+  --bs-secondary-bg: #f1f5f9;
+  --bs-tertiary-bg: #e2e8f0;
+}
+
+body {
+  font-family: var(--lg-font-sans);
+  background-color: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Judicial Serif Headings */
+.font-serif,
+.lg-serif {
+  font-family: var(--lg-font-serif) !important;
+}
+
+/* Code & Digest Monospace */
+.font-mono,
+.lg-mono {
+  font-family: var(--lg-font-mono) !important;
+  letter-spacing: -0.02em;
+}
+
+/* Smooth custom dark scrollbars */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.6);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.5);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.8);
+}
+
+/* Form inputs & controls dark styling */
+.form-control,
+.form-select {
+  background-color: #0f172a;
+  border-color: rgba(148, 163, 184, 0.2);
+  color: #f1f5f9;
+}
+.form-control:focus,
+.form-select:focus {
+  background-color: #0b1120;
+  border-color: var(--lg-gold);
+  color: #ffffff;
+  box-shadow: 0 0 0 0.2rem rgba(245, 158, 11, 0.2);
+}
+.form-control::placeholder {
+  color: #64748b;
+}
+
+/* Custom LexGuard Buttons */
+.btn-gold {
+  background-color: var(--lg-gold);
+  color: #0b0f17;
+  font-weight: 600;
+  border: 1px solid var(--lg-gold);
+}
+.btn-gold:hover,
+.btn-gold:focus {
+  background-color: var(--lg-gold-hover);
+  color: #ffffff;
+  border-color: var(--lg-gold-hover);
+}
+
+.btn-judicial-outline {
+  background-color: rgba(30, 41, 59, 0.6);
+  color: #cbd5e1;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  font-weight: 500;
+}
+.btn-judicial-outline:hover {
+  background-color: rgba(51, 65, 85, 0.8);
+  color: #ffffff;
+  border-color: rgba(148, 163, 184, 0.4);
+}
+
+/* Glassmorphism Cards */
+.card-judicial {
+  background-color: #111827;
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-radius: 0.75rem;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+}
+
+/* Gold Badge */
+.badge-gold {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  font-weight: 600;
+}

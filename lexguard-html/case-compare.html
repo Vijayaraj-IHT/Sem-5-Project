@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Precedent Comparator · LexGuard</title>
+
+  <!-- Google Fonts & CDN CSS -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css">
+
+  <!-- LexGuard Styles -->
+  <link rel="stylesheet" href="css/lexguard.css">
+  <link rel="stylesheet" href="css/components.css">
+</head>
+<body data-active-page="compare">
+
+  <!-- Shared Top Navbar & Left Sidebar slots -->
+  <div id="navbar-slot"></div>
+  <div id="sidebar-slot"></div>
+
+  <!-- Main Content -->
+  <main class="lg-main">
+    <div class="container-fluid px-0" style="max-width: 1200px;">
+
+      <!-- Page Header -->
+      <div class="lg-page-header">
+        <div>
+          <h1 class="lg-page-title">
+            <i class="bi bi-columns-gap text-warning"></i>
+            <span>Precedent Comparator</span>
+          </h1>
+          <p class="lg-page-subtitle">
+            Deterministic, explainable dimension-by-dimension alignment analysis against landmark precedents from the Madras High Court &amp; Supreme Court.
+          </p>
+        </div>
+        <div>
+          <span class="badge bg-secondary">Deterministic v1.0 Engine</span>
+        </div>
+      </div>
+
+      <!-- Case Selection Bar -->
+      <div class="card card-judicial p-4 mb-4 shadow">
+        <div class="row g-3 align-items-end">
+          <div class="col-md-5">
+            <label for="select-case-1" class="form-label text-secondary small fw-semibold">Case 1 (Target / Petition)</label>
+            <select class="form-select" id="select-case-1">
+              <option value="">Choose Case 1...</option>
+            </select>
+          </div>
+
+          <div class="col-md-5">
+            <label for="select-case-2" class="form-label text-secondary small fw-semibold">Case 2 (Registered Precedent)</label>
+            <select class="form-select" id="select-case-2">
+              <option value="">Choose Precedent to Compare...</option>
+            </select>
+          </div>
+
+          <div class="col-md-2">
+            <button type="button" class="btn btn-gold w-100 py-2" id="run-compare-btn">
+              <i class="bi bi-lightning-charge-fill me-1"></i>Compare
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading Indicator -->
+      <div id="compare-loading" class="text-center py-5 d-none">
+        <div class="spinner-border text-warning" role="status"></div>
+        <p class="text-secondary small mt-2">Computing dimensional alignment scores...</p>
+      </div>
+
+      <!-- Comparison Results Container -->
+      <div id="compare-results-container" class="d-none">
+
+        <!-- Score & Alignment Summary Card -->
+        <div class="card card-judicial p-4 mb-4 shadow">
+          <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div class="d-flex align-items-center gap-4">
+              <!-- SVG Score Ring -->
+              <div class="lg-score-ring">
+                <svg viewBox="0 0 80 80">
+                  <circle class="circle-bg" cx="40" cy="40" r="35"></circle>
+                  <circle class="circle-progress" id="score-ring-circle" cx="40" cy="40" r="35"></circle>
+                </svg>
+                <div class="score-text" id="score-ring-text">0%</div>
+              </div>
+
+              <div>
+                <span class="badge badge-gold mb-1" id="score-tier-badge">Alignment Tier</span>
+                <h2 class="h4 fw-bold text-light mb-1" id="score-summary-title">Dimensional Alignment Analysis</h2>
+                <p class="text-secondary small mb-0" id="score-summary-desc">
+                  Based on statutory sections, factual matrix, court hierarchy, and procedural remedy.
+                </p>
+              </div>
+            </div>
+
+            <div class="text-end">
+              <button type="button" class="btn btn-sm btn-judicial-outline" id="swap-cases-btn">
+                <i class="bi bi-arrow-left-right me-1"></i>Swap Sides
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5-Dimensional Alignment Matrix Table -->
+        <div class="card card-judicial p-4 mb-4 shadow">
+          <h3 class="h5 fw-bold text-light mb-3">
+            <i class="bi bi-table text-warning me-2"></i>Dimensional Alignment Matrix
+          </h3>
+          <div class="table-responsive">
+            <table class="table table-dark table-hover small border border-secondary border-opacity-25 align-middle mb-0">
+              <thead class="table-dark">
+                <tr class="text-secondary border-bottom border-secondary border-opacity-50">
+                  <th style="width: 22%;">Dimension</th>
+                  <th style="width: 25%;">Target Case Value</th>
+                  <th style="width: 25%;">Precedent Value</th>
+                  <th style="width: 12%;">Match State</th>
+                  <th style="width: 16%;">Alignment Score</th>
+                </tr>
+              </thead>
+              <tbody id="matrix-table-body">
+                <!-- Dynamically populated rows -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Statutory Divergence & Explanations Panel -->
+        <div class="row g-4 mb-4">
+          <div class="col-lg-6">
+            <div class="card card-judicial p-4 h-100 shadow">
+              <h3 class="h6 fw-bold text-light mb-3 pb-2 border-bottom border-secondary border-opacity-25">
+                <i class="bi bi-file-earmark-diff text-info me-2"></i>Case 1 Details
+              </h3>
+              <div id="case1-details-box" class="small text-secondary lh-base">
+                <!-- Case 1 info -->
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-6">
+            <div class="card card-judicial p-4 h-100 shadow">
+              <h3 class="h6 fw-bold text-light mb-3 pb-2 border-bottom border-secondary border-opacity-25">
+                <i class="bi bi-shield-check text-success me-2"></i>Case 2 (Precedent) Details
+              </h3>
+              <div id="case2-details-box" class="small text-secondary lh-base">
+                <!-- Case 2 info -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Legal Disclaimer -->
+        <div class="alert alert-dark small border border-secondary border-opacity-25 text-secondary">
+          <i class="bi bi-info-circle-fill text-warning me-2"></i>
+          <strong>Judicial Research Disclaimer:</strong> This comparison score is generated as a structured legal research aid based on transparent factual and statutory dimension matching. It does not predict judicial outcomes, constitute legal advice, or establish binding precedential effect.
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+
+  <!-- CDN JS Dependencies -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+
+  <!-- LexGuard Core & Page Scripts -->
+  <script src="js/lexguard-core.js"></script>
+  <script src="js/lexguard-auth.js"></script>
+  <script src="js/lexguard-toast.js"></script>
+  <script src="js/lexguard-api.js"></script>
+  <script src="js/lexguard-nav.js"></script>
+  <script src="js/pages/case-compare.js"></script>
+</body>
+</html>
