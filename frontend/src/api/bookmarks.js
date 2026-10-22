@@ -16,13 +16,21 @@ export async function getBookmarks() {
  * @param {string|Object} caseIdOrPayload - Case ID or payload object { case_id }
  * @returns {Promise<Object>} Created bookmark response
  */
-export async function addBookmark(caseIdOrPayload) {
-  const caseId =
-    typeof caseIdOrPayload === 'object' && caseIdOrPayload !== null
-      ? caseIdOrPayload.case_id || caseIdOrPayload.caseId
-      : caseIdOrPayload;
+export async function addBookmark(caseIdOrPayload, notes = null) {
+  let payload = {};
+  if (typeof caseIdOrPayload === 'object' && caseIdOrPayload !== null) {
+    payload = {
+      case_id: caseIdOrPayload.case_id || caseIdOrPayload.caseId,
+      notes: caseIdOrPayload.notes || notes,
+    };
+  } else {
+    payload = {
+      case_id: caseIdOrPayload,
+      notes: notes,
+    };
+  }
 
-  const response = await client.post('/bookmarks/', { case_id: caseId });
+  const response = await client.post('/bookmarks/', payload);
   return response.data;
 }
 

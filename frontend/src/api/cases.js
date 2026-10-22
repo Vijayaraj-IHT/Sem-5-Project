@@ -120,8 +120,15 @@ export async function searchKeywordsInCase(caseId, query) {
   return response.data;
 }
 
+export async function updateCase(caseId, data) {
+  const response = await client.patch(`/cases/${caseId}`, data);
+  return response.data;
+}
+
 export default {
   uploadCase,
+  uploadCaseAuto,
+  updateCase,
   getCases,
   getCase,
   viewCase,

@@ -1,42 +1,100 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { ShieldCheck, Scale, FileText, Printer, CheckCircle2 } from 'lucide-react';
 import { comparisonApi } from '../api/comparison';
-import PrecedentSelector from '../components/comparator/PrecedentSelector';
+import PrecedentTray from '../components/comparator/PrecedentTray';
+import PrecedentModal from '../components/comparator/PrecedentModal';
 import CaseInputForm from '../components/comparator/CaseInputForm';
-import ScoreCard from '../components/comparator/ScoreCard';
-import ComparisonMatrix from '../components/comparator/ComparisonMatrix';
+import MultiComparisonMatrix from '../components/comparator/MultiComparisonMatrix';
+import CrossStatutoryMatrix from '../components/comparator/CrossStatutoryMatrix';
+import ComparisonExportModal from '../components/comparator/ComparisonExportModal';
 
 /**
  * CaseComparePage Component
- * Precedent Comparator screen that evaluates structured user matter dimensions against
- * published landmark precedents.
- * Demonstrates explainable score, dimension-by-dimension matrix, and dynamic weight renormalization.
+ * Precedent Alignment Comparator supporting simultaneous multi-precedent comparison (1 to 3 cases)
+ * with top selection tray, explainable dimensional matrix, and CrPC/BNSS cross-statutory divergence.
  */
 export default function CaseComparePage() {
-  const [selectedCase, setSelectedCase] = useState(null);
-  const [comparisonResult, setComparisonResult] = useState(null);
+  const [selectedPrecedents, setSelectedPrecedents] = useState([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [activeSlotIndex, setActiveSlotIndex] = useState(null);
+  const [multiComparisonResult, setMultiComparisonResult] = useState(null);
+  const [activeUserCase, setActiveUserCase] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+
+  // Automatically pre-load initial published precedents to populate tray
+  useEffect(() => {
+    async function loadInitialPrecedents() {
+      try {
+        const data = await comparisonApi.getPublishedPrecedents();
+        if (data && data.length > 0) {
+          // Pre-populate with first 2 precedents
+          setSelectedPrecedents(data.slice(0, Math.min(2, data.length)));
+        }
+      } catch (err) {
+        console.error('Failed to pre-load published precedents:', err);
+      }
+    }
+    loadInitialPrecedents();
+  }, []);
+
+  const handleOpenModal = (slotIndex = null) => {
+    setActiveSlotIndex(slotIndex);
+    setIsModalOpen(true);
+  };
+
+  const handleSelectPrecedent = (precedent, slotIndex) => {
+    setSelectedPrecedents((prev) => {
+      const next = [...prev];
+      if (slotIndex !== null && slotIndex !== undefined && slotIndex < 3) {
+        next[slotIndex] = precedent;
+      } else {
+        if (!next.some((p) => p.id === precedent.id) && next.length < 3) {
+          next.push(precedent);
+        }
+      }
+      return next.filter(Boolean);
+    });
+    setMultiComparisonResult(null); // Reset result on precedent changes
+  };
+
+  const handleRemovePrecedent = (precedentId) => {
+    setSelectedPrecedents((prev) => prev.filter((p) => p.id !== precedentId));
+    setMultiComparisonResult(null);
+  };
 
   const handleRunComparison = async (userData) => {
-    if (!selectedCase) {
-      setError('Please select a published precedent first.');
+    if (selectedPrecedents.length === 0) {
+      setError('Please select at least 1 published precedent in the tray above.');
       return;
     }
 
     setLoading(true);
     setError(null);
     try {
-      const result = await comparisonApi.compareCases({
-        user_case: userData,
-        precedent_id: selectedCase.id,
-      });
-      setComparisonResult(result);
+      const payload = {
+        precedent_case_ids: selectedPrecedents.map((p) => p.id),
+        case_title: userData.title,
+        court_jurisdiction: userData.court_jurisdiction,
+        practice_area: userData.practice_area,
+        procedural_status: userData.procedural_status,
+        remedy_sought: userData.remedy_sought,
+        statutory_provisions: userData.statutory_provisions,
+        legal_issues: userData.legal_issues,
+        facts_summary: userData.facts_summary,
+        outcome: userData.outcome,
+      };
+
+      const result = await comparisonApi.compareMultiCases(payload);
+      setMultiComparisonResult(result);
+      setActiveUserCase(userData);
     } catch (err) {
-      console.error('Comparison error:', err);
+      console.error('Multi comparison error:', err);
       setError(
         err.response?.data?.detail ||
-          'Failed to perform case comparison. Ensure backend server is reachable.'
+          'Failed to perform multi-precedent comparison. Ensure backend server is reachable.'
       );
     } finally {
       setLoading(false);
@@ -49,15 +107,15 @@ export default function CaseComparePage() {
       <div className="flex items-center justify-between flex-wrap gap-4 border-b border-slate-800 pb-5">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight text-white">
+            <h1 className="text-2xl font-bold tracking-tight text-white font-serif">
               Precedent Alignment Comparator
             </h1>
-            <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-              Indian Jurisprudence
+            <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-mono">
+              Madras High Court & Apex Jurisprudence
             </span>
           </div>
           <p className="text-sm text-slate-400 mt-1 max-w-3xl">
-            Compare statutory conditions, procedural posture, remedies, and factual matrix between your matter and published landmark rulings with explainable mathematical alignment.
+            Evaluate your client matter against up to 3 landmark rulings simultaneously. Analyze statutory divergence across CrPC/BNSS and IPC/BNS with deterministic mathematical alignment.
           </p>
         </div>
 
@@ -66,9 +124,7 @@ export default function CaseComparePage() {
             to="/verify"
             className="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 transition-colors flex items-center gap-1.5"
           >
-            <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            </svg>
+            <ShieldCheck className="w-4 h-4 text-emerald-400" />
             Verify Document Integrity
           </Link>
         </div>
@@ -79,51 +135,81 @@ export default function CaseComparePage() {
           <span>{error}</span>
           <button
             onClick={() => setError(null)}
-            className="text-rose-400 hover:text-rose-300 text-xs font-medium"
+            className="text-rose-400 hover:text-rose-300 text-xs font-medium cursor-pointer"
           >
             Dismiss
           </button>
         </div>
       )}
 
-      {/* Input Split Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-        <CaseInputForm
-          onSubmit={handleRunComparison}
-          loading={loading}
-        />
-        <PrecedentSelector
-          selectedCase={selectedCase}
-          onSelectCase={(c) => {
-            setSelectedCase(c);
-            setComparisonResult(null); // Reset result on precedent switch
-          }}
-        />
+      {/* 1. Top Precedent Selection Tray (Up to 3 Slots) */}
+      <PrecedentTray
+        selectedPrecedents={selectedPrecedents}
+        onOpenModal={handleOpenModal}
+        onRemovePrecedent={handleRemovePrecedent}
+        maxPrecedents={3}
+      />
+
+      {/* 2. Matter Input Form */}
+      <div className="grid grid-cols-1 gap-6 items-start">
+        <CaseInputForm onSubmit={handleRunComparison} loading={loading} />
       </div>
 
-      {/* Comparison Results Section */}
-      {comparisonResult && (
+      {/* 3. Multi-Comparison Results Section */}
+      {multiComparisonResult && (
         <div className="mt-8 space-y-6 animate-fadeIn">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
-              Alignment Analysis Results
-            </h2>
-            <span className="text-xs text-slate-400">
-              Evaluated against <strong className="text-slate-200">{comparisonResult.precedent_case?.title}</strong>
-            </span>
+          <div className="flex items-center justify-between flex-wrap gap-4 pb-2 border-b border-slate-800">
+            <div className="flex items-center gap-2.5">
+              <span className="w-3 h-3 rounded-full bg-emerald-400 animate-pulse"></span>
+              <h2 className="text-lg font-bold text-white font-serif">
+                Multi-Precedent Comparative Matrix
+              </h2>
+              <span className="text-xs px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-mono">
+                {multiComparisonResult.results?.length} Precedents Evaluated
+              </span>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setIsExportModalOpen(true)}
+                className="px-3.5 py-1.5 text-xs font-medium rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white flex items-center gap-1.5 shadow-md shadow-indigo-600/20 transition-all cursor-pointer"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                Export Comparison Memorandum
+              </button>
+            </div>
           </div>
 
-          {/* Alignment Score Summary Card */}
-          <ScoreCard score={comparisonResult.alignment_score} />
-
           {/* Dimension by Dimension Comparison Matrix */}
-          <ComparisonMatrix
-            dimensions={comparisonResult.dimensions}
-            score={comparisonResult.alignment_score}
+          <MultiComparisonMatrix
+            multiResult={multiComparisonResult}
+            userCase={activeUserCase}
+          />
+
+          {/* Cross-Statutory Divergence & Sanhita Transition Analysis */}
+          <CrossStatutoryMatrix
+            crossMatrix={multiComparisonResult.cross_statutory_matrix}
           />
         </div>
       )}
+
+      {/* Precedent Selector Modal */}
+      <PrecedentModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSelectPrecedent={handleSelectPrecedent}
+        selectedIds={selectedPrecedents.map((p) => p.id)}
+        targetSlotIndex={activeSlotIndex}
+      />
+
+      {/* Export / Printable Memorandum Modal */}
+      <ComparisonExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        multiResult={multiComparisonResult}
+        userCase={activeUserCase}
+      />
     </div>
   );
 }

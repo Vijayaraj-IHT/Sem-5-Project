@@ -26,6 +26,10 @@ class BookmarkCaseBrief(BaseModel):
     court: str
     year: int
     outcome: Optional[str] = None
+    disposition: Optional[str] = None
+    judge: Optional[str] = None
+    act_tags: List[str] = []
+    section_tags: List[str] = []
     summary: Optional[str] = None
     file_hash: str
 

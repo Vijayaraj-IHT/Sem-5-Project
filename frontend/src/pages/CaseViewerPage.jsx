@@ -32,9 +32,14 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  Printer,
+  GitCommit,
 } from 'lucide-react';
 import IntegrityBadge from '../components/common/IntegrityBadge';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import JudicialPdfViewer from '../components/common/JudicialPdfViewer';
+import CaseBriefExportModal from '../components/case/CaseBriefExportModal';
+import BookmarkFolderModal from '../components/case/BookmarkFolderModal';
 import { getCase, viewCase, verifyIntegrity, getOfficialCaseContent, searchKeywordsInCase } from '../api/cases';
 import { getBookmarks, addBookmark, removeBookmark } from '../api/bookmarks';
 import { useAuth } from '../context/AuthContext';
@@ -55,7 +60,10 @@ const CaseViewerPage = () => {
   const [loading, setLoading] = useState(true);
   const [verifying, setVerifying] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
-  const [activeTab, setActiveTab] = useState('structure'); // 'structure' or 'document'
+  const [activeTab, setActiveTab] = useState('structure'); // 'structure', 'document', 'precedents', or 'seal'
+  const [docViewMode, setDocViewMode] = useState('pdf'); // 'pdf' or 'transcript'
+  const [isBriefModalOpen, setIsBriefModalOpen] = useState(false);
+  const [isBookmarkModalOpen, setIsBookmarkModalOpen] = useState(false);
 
   // Official Judgment & Keyword Finder State
   const [officialContent, setOfficialContent] = useState(null);
@@ -254,34 +262,46 @@ const CaseViewerPage = () => {
     }
   };
 
-  // Toggle Bookmark Handler
-  const handleToggleBookmark = async () => {
+  // Bookmark Handlers
+  const handleToggleBookmark = () => {
     if (!canBookmark) {
       showToast('Please sign in with an Advocate, Scholar, or Staff account to save bookmarks.');
       return;
     }
+    setIsBookmarkModalOpen(true);
+  };
 
+  const handleSaveBookmarkWithFolder = async (notes) => {
     setBookmarkLoading(true);
     try {
-      if (isBookmarked) {
-        if (bookmarkId && bookmarkId !== true) {
-          await removeBookmark(bookmarkId);
-        } else {
-          await removeBookmark(caseId);
-        }
-        setIsBookmarked(false);
-        setBookmarkId(null);
-        showToast('Case removed from your bookmarks.');
-      } else {
-        const res = await addBookmark(caseId);
-        setIsBookmarked(true);
-        setBookmarkId(res?.id || true);
-        showToast('Case saved to your bookmarks.');
-      }
+      const res = await addBookmark(caseId, notes);
+      setIsBookmarked(true);
+      setBookmarkId(res?.id || true);
+      showToast('Precedent saved into your research folder.');
+      setIsBookmarkModalOpen(false);
     } catch (err) {
-      console.warn('Bookmark API error, updating state locally:', err);
-      setIsBookmarked((prev) => !prev);
-      showToast(isBookmarked ? 'Bookmark removed.' : 'Case bookmarked.');
+      console.error('Failed to save bookmark:', err);
+      showToast('Could not save bookmark.');
+    } finally {
+      setBookmarkLoading(false);
+    }
+  };
+
+  const handleRemoveBookmarkModal = async () => {
+    setBookmarkLoading(true);
+    try {
+      if (bookmarkId && bookmarkId !== true) {
+        await removeBookmark(bookmarkId);
+      } else {
+        await removeBookmark(caseId);
+      }
+      setIsBookmarked(false);
+      setBookmarkId(null);
+      showToast('Bookmark removed from folder.');
+      setIsBookmarkModalOpen(false);
+    } catch (err) {
+      console.error('Failed to remove bookmark:', err);
+      showToast('Could not remove bookmark.');
     } finally {
       setBookmarkLoading(false);
     }
@@ -514,12 +534,28 @@ const CaseViewerPage = () => {
               </p>
             )}
 
+            {/* SCR / CTC Law Reporter Catchwords Bar */}
+            <div className="mt-4 p-2.5 bg-slate-950/80 rounded-xl border border-slate-800/90 font-mono text-xs text-amber-300 flex items-center gap-2 flex-wrap font-semibold">
+              <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 uppercase tracking-wider font-sans">
+                SCR / CTC Catchwords
+              </span>
+              <span>
+                [ {caseData.case_no} &bull; {(caseData.act_tags || []).join(' — ').toUpperCase() || 'CRIMINAL JURISPRUDENCE'} &bull; {(caseData.section_tags || []).slice(0, 3).join(', ') || 'PROCEDURE'} &bull; {caseData.disposition || caseData.outcome || 'ALLOWED'} ]
+              </span>
+            </div>
+
             {/* Metadata Row */}
-            <div className="mt-6 pt-5 border-t border-slate-800/80 flex flex-wrap items-center gap-3 sm:gap-4 text-xs">
-              {/* Court Badge */}
+            <div className="mt-5 pt-4 border-t border-slate-800/80 flex flex-wrap items-center gap-2.5 sm:gap-3 text-xs">
+              {/* Court & Bench Seat Badge */}
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800/90 border border-slate-700/80 text-slate-200">
                 <Building2 className="w-3.5 h-3.5 text-amber-400" />
                 <span className="font-medium">{caseData.court || 'Court Unspecified'}</span>
+              </div>
+
+              {/* Bench Composition Badge */}
+              <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 font-mono">
+                <Gavel className="w-3.5 h-3.5 text-indigo-400" />
+                <span>{caseData.judge?.toUpperCase().includes('AND') ? 'Division Bench (2 Judges)' : 'Single Bench'}</span>
               </div>
 
               {/* Year Badge */}
@@ -536,12 +572,12 @@ const CaseViewerPage = () => {
                 </div>
               )}
 
-              {/* Outcome Badge */}
-              {caseData.outcome && (
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800/90 border border-slate-700/80 text-slate-200">
-                  <Scale className="w-3.5 h-3.5 text-amber-400" />
-                  <span className="text-slate-400">Disposition:</span>
-                  <span className="font-semibold text-white capitalize">{caseData.outcome}</span>
+              {/* Disposition Badge */}
+              {(caseData.disposition || caseData.outcome) && (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 font-mono">
+                  <Scale className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="text-emerald-400/80">Disposition:</span>
+                  <span className="font-semibold text-white capitalize">{caseData.disposition || caseData.outcome}</span>
                 </div>
               )}
 
@@ -560,7 +596,7 @@ const CaseViewerPage = () => {
           aria-label="Document Actions"
           className="mt-6 bg-slate-900 border border-slate-800 rounded-xl p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3 shadow-md"
         >
-          {/* Left Actions: Bookmark & Citation */}
+          {/* Left Actions: Bookmark, Brief & Citation */}
           <div className="flex flex-wrap items-center gap-2.5">
             {/* Bookmark Toggle */}
             <button
@@ -572,7 +608,7 @@ const CaseViewerPage = () => {
                   ? 'bg-rose-500/15 text-rose-300 border-rose-500/40 hover:bg-rose-500/25'
                   : 'bg-slate-800 text-slate-200 border-slate-700 hover:text-white hover:bg-slate-700'
               }`}
-              title={canBookmark ? 'Toggle bookmark for this case' : 'Sign in as Advocate/Scholar to bookmark'}
+              title={canBookmark ? 'Save into research folder' : 'Sign in as Advocate/Scholar to bookmark'}
             >
               <Heart
                 className={`w-4 h-4 ${isBookmarked ? 'fill-rose-400 text-rose-400' : 'text-slate-400'}`}
@@ -580,31 +616,48 @@ const CaseViewerPage = () => {
               <span>{isBookmarked ? 'Bookmarked' : 'Bookmark Case'}</span>
             </button>
 
-            {/* Insert Citation into Draft (Advocate Role) */}
-            {isAdvocate && (
-              <button
-                type="button"
-                onClick={handleCopyCitation}
-                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold bg-blue-950/80 hover:bg-blue-900 text-blue-200 border border-blue-800 transition-colors shadow-xs cursor-pointer"
-                title="Copy standard citation into clipboard for your legal drafting"
-              >
-                {citationCopied ? (
-                  <>
-                    <Check className="w-4 h-4 text-emerald-400" />
-                    <span className="text-emerald-300">Citation Copied!</span>
-                  </>
-                ) : (
-                  <>
-                    <BookOpen className="w-4 h-4 text-blue-400" />
-                    <span>Insert Citation into Draft</span>
-                  </>
-                )}
-              </button>
-            )}
+            {/* Export Case Brief Modal Button */}
+            <button
+              type="button"
+              onClick={() => setIsBriefModalOpen(true)}
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/20 transition-all cursor-pointer"
+              title="Generate printable Law Reporter headnote brief"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>Export Case Brief</span>
+            </button>
+
+            {/* Standard Citation Copy */}
+            <button
+              type="button"
+              onClick={handleCopyCitation}
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors cursor-pointer"
+              title="Copy standard citation into clipboard"
+            >
+              {citationCopied ? (
+                <>
+                  <Check className="w-4 h-4 text-emerald-400" />
+                  <span className="text-emerald-300">Citation Copied!</span>
+                </>
+              ) : (
+                <>
+                  <BookOpen className="w-4 h-4 text-blue-400" />
+                  <span>Copy Citation</span>
+                </>
+              )}
+            </button>
           </div>
 
-          {/* Right Actions: Download & Verify Integrity */}
+          {/* Right Actions: Compare, Download & Verify Integrity */}
           <div className="flex flex-wrap items-center gap-2.5">
+            <Link
+              to="/compare"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-slate-700 transition-colors"
+            >
+              <Scale className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Compare Precedent</span>
+            </Link>
+
             {/* Verify Integrity Button */}
             <button
               type="button"
@@ -674,11 +727,11 @@ const CaseViewerPage = () => {
 
         {/* Navigation Tabs for Judicial Structure vs Raw Judgment */}
         <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => setActiveTab('structure')}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 activeTab === 'structure'
                   ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30 shadow-xs'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
@@ -687,13 +740,13 @@ const CaseViewerPage = () => {
               <Scale className="w-4 h-4 text-amber-400" />
               <span>Multi-Dimensional Judicial Structure</span>
               <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-mono">
-                5 Rhetorical Roles
+                5 Roles
               </span>
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('document')}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 activeTab === 'document'
                   ? 'bg-slate-800 text-white border border-slate-700 shadow-xs'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
@@ -702,19 +755,44 @@ const CaseViewerPage = () => {
               <FileText className="w-4 h-4 text-slate-400" />
               <span>Authentic Record & PDF</span>
             </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('precedents')}
+              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                activeTab === 'precedents'
+                  ? 'bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 shadow-xs'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+              }`}
+            >
+              <BookOpen className="w-4 h-4 text-indigo-400" />
+              <span>Precedent Network</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-mono">
+                {(caseData.precedents_cited || []).length}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('seal')}
+              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                activeTab === 'seal'
+                  ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shadow-xs'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+              }`}
+            >
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <span>Judicial Seal & Ledger</span>
+            </button>
           </div>
 
-          {/* Action Link to Draft Assistant */}
-          {isAuthenticated && (
-            <Link
-              to={`/drafts?caseId=${caseData.id}`}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25 transition-colors"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Compare with Petition Draft</span>
-              <ArrowRight className="w-3 h-3" />
-            </Link>
-          )}
+          {/* Action Link to Precedent Comparator */}
+          <Link
+            to={`/compare?precedentId=${caseData.id}`}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/25 transition-colors"
+          >
+            <Scale className="w-3.5 h-3.5" />
+            <span>Compare in Comparator</span>
+            <ArrowRight className="w-3 h-3" />
+          </Link>
         </div>
 
         {/* Tab 1: Multi-Dimensional Judicial Structure */}
@@ -912,7 +990,33 @@ const CaseViewerPage = () => {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                {/* View Mode Switcher: PDF Stream vs Text Transcript */}
+                <div className="flex items-center bg-slate-800 p-1 rounded-lg border border-slate-700">
+                  <button
+                    type="button"
+                    onClick={() => setDocViewMode('pdf')}
+                    className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
+                      docViewMode === 'pdf'
+                        ? 'bg-amber-400 text-slate-950 font-bold'
+                        : 'text-slate-300 hover:text-white'
+                    }`}
+                  >
+                    PDF Stream
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDocViewMode('transcript')}
+                    className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
+                      docViewMode === 'transcript'
+                        ? 'bg-amber-400 text-slate-950 font-bold'
+                        : 'text-slate-300 hover:text-white'
+                    }`}
+                  >
+                    Text Transcript
+                  </button>
+                </div>
+
                 {caseData.source_url && (
                   <a
                     href={caseData.source_url}
@@ -934,6 +1038,20 @@ const CaseViewerPage = () => {
                 </button>
               </div>
             </div>
+
+            {docViewMode === 'pdf' ? (
+              <div className="p-2 sm:p-4 bg-slate-950">
+                <JudicialPdfViewer
+                  caseId={caseData.id}
+                  caseNo={caseData.case_no}
+                  court={caseData.court}
+                  fileHash={caseData.file_hash}
+                  phiCase={caseData.redacted_file_hash}
+                  height="820px"
+                />
+              </div>
+            ) : (
+              <>
 
             {/* In-Document Keyword Search & Filter Ribbon */}
             <div className="bg-slate-50 border-b border-slate-200 p-4 sm:p-5">
@@ -1249,8 +1367,217 @@ const CaseViewerPage = () => {
                 </div>
               )}
             </div>
+            </>
+          )}
+        </section>
+      )}
+
+      {/* Tab 3: Precedent Network & Citations */}
+      {activeTab === 'precedents' && (
+        <div className="mt-6 space-y-6">
+          <section className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-md">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-5 pb-4 border-b border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+                  <BookOpen className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Landmark Rulings & Precedents Cited</h3>
+                  <p className="text-xs text-slate-400">
+                    Authoritative legal citations referenced in the judgment ratio of {caseData.court}
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs font-mono font-semibold px-2.5 py-1 rounded-md bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
+                {(caseData.precedents_cited || []).length} Citations Identified
+              </span>
+            </div>
+
+            {Array.isArray(caseData.precedents_cited) && caseData.precedents_cited.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {caseData.precedents_cited.map((citation, idx) => (
+                  <div
+                    key={`prec-card-${idx}`}
+                    className="p-4 rounded-xl bg-slate-950/70 border border-slate-800/90 hover:border-indigo-500/40 transition-all flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-indigo-950 text-indigo-300 border border-indigo-800">
+                          Precedent #{idx + 1}
+                        </span>
+                        <span className="text-[10px] font-semibold text-emerald-400 flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3" />
+                          Judicially Cited
+                        </span>
+                      </div>
+                      <h4 className="text-sm font-bold text-white mb-1.5">{citation}</h4>
+                      <p className="text-xs text-slate-400 leading-relaxed">
+                        Referred to by the bench for interpreting statutory boundaries and legal ratio.
+                      </p>
+                    </div>
+
+                    <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between gap-2">
+                      <Link
+                        to={`/search?q=${encodeURIComponent(citation)}`}
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition-colors"
+                      >
+                        <Search className="w-3.5 h-3.5" />
+                        <span>Search in Archive</span>
+                      </Link>
+                      <Link
+                        to={`/compare?precedentId=${caseData.id}`}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"
+                      >
+                        <Scale className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Compare in Matrix</span>
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-10 px-4 bg-slate-950/40 rounded-xl border border-dashed border-slate-800">
+                <BookOpen className="w-8 h-8 mx-auto mb-2 text-slate-500" />
+                <p className="text-xs text-slate-400">
+                  No explicit precedent rulings were cataloged in this extract. Refer to the Authentic Full-Text Transcript tab for full verbatim citations.
+                </p>
+              </div>
+            )}
           </section>
-        )}
+        </div>
+      )}
+
+      {/* Tab 4: Cryptographic Judicial Seal & Blockchain Ledger */}
+      {activeTab === 'seal' && (
+        <div className="mt-6 space-y-6">
+          <section className="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-md">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                  <ShieldCheck className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                    <span>Composite Judicial Seal & Cryptographic Proof</span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                      FIPS 180-4 SHA-256
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Immutable mathematical verification protecting the integrity of {caseData.court} proceedings
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Link
+                  to="/admin/audit"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"
+                >
+                  <GitCommit className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Audit Ledger</span>
+                </Link>
+                <button
+                  type="button"
+                  onClick={handleVerifyIntegrity}
+                  disabled={verifying}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold bg-amber-400 hover:bg-amber-300 text-slate-950 transition-colors cursor-pointer"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${verifying ? 'animate-spin' : ''}`} />
+                  <span>{verifying ? 'Auditing...' : 'Run Audit'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Mathematical Formula Explanation */}
+            <div className="mt-6 p-4 rounded-xl bg-slate-950 border border-slate-800">
+              <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                Judicial Seal Formula
+              </div>
+              <div className="font-mono text-xs sm:text-sm text-amber-300 bg-slate-900/80 p-3 rounded-lg border border-slate-800 overflow-x-auto">
+                &Phi;<sub>case</sub> = SHA-256( H<sub>doc</sub> &parallel; H<sub>meta</sub> &parallel; H<sub>text</sub> &parallel; T<sub>approved</sub> )
+              </div>
+              <p className="text-[11px] text-slate-400 mt-2">
+                The composite judicial seal &Phi; binds the raw court PDF binary hash, normalized metadata strings, full-text transcript digest, and judicial bench approval timestamp into a single tamper-evident identifier.
+              </p>
+            </div>
+
+            {/* Breakdown Cards */}
+            <div className="mt-6 space-y-3">
+              {/* 1. H_doc */}
+              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 font-mono">
+                    1. H<sub>doc</sub> (Document Binary Hash)
+                  </span>
+                  <div className="font-mono text-xs text-slate-200 break-all select-all">
+                    {caseData.file_hash || 'SHA-256 pending'}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(caseData.file_hash || '');
+                    showToast('H_doc copied to clipboard');
+                  }}
+                  className="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 shrink-0 self-start sm:self-auto cursor-pointer"
+                  title="Copy H_doc"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {/* 2. Composite Seal Phi */}
+              <div className="p-4 rounded-xl bg-amber-950/20 border border-amber-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 font-mono">
+                      Composite Seal (&Phi;<sub>case</sub>)
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                      OFFICIAL SEAL
+                    </span>
+                  </div>
+                  <div className="font-mono text-xs text-amber-200 font-bold break-all select-all">
+                    {caseData.redacted_file_hash || caseData.file_hash}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(caseData.redacted_file_hash || caseData.file_hash || '');
+                    showToast('Composite Seal copied to clipboard');
+                  }}
+                  className="p-1.5 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 shrink-0 self-start sm:self-auto cursor-pointer"
+                  title="Copy Seal"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {/* 3. Approval Timestamp T_approved */}
+              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 font-mono">
+                    T<sub>approved</sub> (Judicial Verification Timestamp)
+                  </span>
+                  <div className="text-xs text-slate-300 font-mono">
+                    {caseData.approved_at
+                      ? new Date(caseData.approved_at).toISOString()
+                      : caseData.created_at
+                      ? new Date(caseData.created_at).toISOString()
+                      : 'Pre-seeded Judicial Archive'}
+                  </div>
+                </div>
+                <span className="text-[11px] font-semibold text-emerald-400 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Verified On-Record
+                </span>
+              </div>
+            </div>
+          </section>
+        </div>
+      )}
 
         {/* Cryptographic File Hash & Tamper-Evident Seal Display */}
         <footer className="mt-8 bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-lg">
@@ -1327,6 +1654,25 @@ const CaseViewerPage = () => {
             <span>Lexguard Cryptographic Assurance Chain</span>
           </div>
         </footer>
+
+        {/* Law Reporter Case Brief Export Modal */}
+        <CaseBriefExportModal
+          isOpen={isBriefModalOpen}
+          onClose={() => setIsBriefModalOpen(false)}
+          caseData={caseData}
+          userRole={userRole}
+        />
+
+        {/* Bookmark Research Folder Modal */}
+        <BookmarkFolderModal
+          isOpen={isBookmarkModalOpen}
+          onClose={() => setIsBookmarkModalOpen(false)}
+          caseTitle={caseData?.title}
+          onSaveBookmark={handleSaveBookmarkWithFolder}
+          onRemoveBookmark={handleRemoveBookmarkModal}
+          isCurrentlyBookmarked={isBookmarked}
+          loading={bookmarkLoading}
+        />
       </div>
     </div>
   );

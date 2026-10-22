@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   LayoutDashboard,
   ClipboardCheck,
@@ -18,6 +18,7 @@ import {
   FileText,
   Users,
   Eye,
+  Scale,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -40,8 +41,17 @@ const TABS = [
 export default function AdminDashboardPage() {
   const { user, role, loading: authLoading } = useAuth();
   const currentRole = role || user?.role || 'public';
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [activeTab, setActiveTab] = useState('overview');
+  const tabParam = searchParams.get('tab');
+  const validTab = TABS.some((t) => t.id === tabParam) ? tabParam : 'overview';
+  const [activeTab, setActiveTab] = useState(validTab);
+
+  useEffect(() => {
+    if (tabParam && TABS.some((t) => t.id === tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
 
   // Overview / Analytics state
   const [analyticsData, setAnalyticsData] = useState(null);
@@ -287,8 +297,11 @@ export default function AdminDashboardPage() {
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 transition-all ${
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  setSearchParams({ tab: tab.id });
+                }}
+                className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 transition-all cursor-pointer ${
                   isActive
                     ? 'border-amber-400 text-amber-400 bg-slate-900/60'
                     : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
@@ -553,18 +566,29 @@ export default function AdminDashboardPage() {
                           </span>
                         </td>
                         <td className="py-3.5 px-4 text-right">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedReviewCase(item);
-                              setReviewNote('');
-                              setReviewActionFeedback(null);
-                            }}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-md shadow-xs transition-colors"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                            Review
-                          </button>
+                          <div className="flex items-center justify-end gap-2">
+                            <Link
+                              to={`/review/${item.case_id || item.id}`}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-md shadow-xs transition-colors"
+                              title="Open 50/50 Split-Screen Human-in-the-Loop Review"
+                            >
+                              <Scale className="w-3.5 h-3.5" />
+                              <span>Split-Screen Review</span>
+                            </Link>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedReviewCase(item);
+                                setReviewNote('');
+                                setReviewActionFeedback(null);
+                              }}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-md border border-slate-700 transition-colors cursor-pointer"
+                              title="Quick approve or reject"
+                            >
+                              <Eye className="w-3.5 h-3.5 text-amber-400" />
+                              <span>Quick</span>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -689,11 +713,20 @@ export default function AdminDashboardPage() {
                   </button>
 
                   <div className="flex items-center gap-2.5">
+                    <Link
+                      to={`/review/${selectedReviewCase.case_id || selectedReviewCase.id}`}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors"
+                      title="Open full 50/50 Split-Screen Human-in-the-Loop Review"
+                    >
+                      <Scale className="w-3.5 h-3.5" />
+                      <span>Full Split-Screen Review</span>
+                    </Link>
+
                     <button
                       type="button"
                       disabled={submittingReview}
                       onClick={() => handleReviewDecision('rejected')}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg shadow-sm transition-colors"
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg shadow-sm transition-colors cursor-pointer"
                     >
                       <XCircle className="w-4 h-4" />
                       Reject Document
@@ -703,7 +736,7 @@ export default function AdminDashboardPage() {
                       type="button"
                       disabled={submittingReview}
                       onClick={() => handleReviewDecision('published')}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg shadow-sm transition-colors"
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg shadow-sm transition-colors cursor-pointer"
                     >
                       <CheckCircle2 className="w-4 h-4" />
                       Approve & Publish

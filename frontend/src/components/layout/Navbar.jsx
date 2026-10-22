@@ -10,12 +10,11 @@ import {
   Search,
   LayoutDashboard,
   FileUp,
-  ClipboardCheck,
   Shield,
-  FileText,
   Bookmark,
   ShieldCheck,
   GitCompare,
+  BookOpen,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import RoleBadge from '../common/RoleBadge';
@@ -24,51 +23,60 @@ const NAV_ITEMS_BY_ROLE = {
   senior_staff: [
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { label: 'Case Search', path: '/search', icon: Search },
+    { label: 'Acts Explorer', path: '/acts', icon: BookOpen },
     { label: 'Verify', path: '/verify', icon: ShieldCheck },
     { label: 'Comparator', path: '/compare', icon: GitCompare },
     { label: 'Upload Case', path: '/upload', icon: FileUp },
+    { label: 'Audit Ledger', path: '/admin/audit', icon: Shield },
     { label: 'Bookmarks', path: '/bookmarks', icon: Bookmark },
   ],
   staff: [
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { label: 'Case Search', path: '/search', icon: Search },
+    { label: 'Acts Explorer', path: '/acts', icon: BookOpen },
     { label: 'Verify', path: '/verify', icon: ShieldCheck },
     { label: 'Comparator', path: '/compare', icon: GitCompare },
     { label: 'Upload Case', path: '/upload', icon: FileUp },
+    { label: 'Audit Ledger', path: '/admin/audit', icon: Shield },
     { label: 'Bookmarks', path: '/bookmarks', icon: Bookmark },
   ],
   court_staff: [
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { label: 'Case Search', path: '/search', icon: Search },
+    { label: 'Acts Explorer', path: '/acts', icon: BookOpen },
     { label: 'Verify', path: '/verify', icon: ShieldCheck },
     { label: 'Comparator', path: '/compare', icon: GitCompare },
     { label: 'Upload Case', path: '/upload', icon: FileUp },
+    { label: 'Audit Ledger', path: '/admin/audit', icon: Shield },
     { label: 'Bookmarks', path: '/bookmarks', icon: Bookmark },
   ],
   junior_staff: [
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { label: 'Case Search', path: '/search', icon: Search },
+    { label: 'Acts Explorer', path: '/acts', icon: BookOpen },
     { label: 'Verify', path: '/verify', icon: ShieldCheck },
     { label: 'Comparator', path: '/compare', icon: GitCompare },
     { label: 'Upload Case', path: '/upload', icon: FileUp },
     { label: 'Bookmarks', path: '/bookmarks', icon: Bookmark },
   ],
   advocate: [
-    { label: 'Search', path: '/search', icon: Search },
+    { label: 'Case Search', path: '/search', icon: Search },
+    { label: 'Acts & Provisions', path: '/acts', icon: BookOpen },
     { label: 'Verify', path: '/verify', icon: ShieldCheck },
     { label: 'Comparator', path: '/compare', icon: GitCompare },
-    { label: 'My Drafts', path: '/drafts', icon: FileText },
     { label: 'Bookmarks', path: '/bookmarks', icon: Bookmark },
   ],
   scholar: [
-    { label: 'Search', path: '/search', icon: Search },
+    { label: 'Case Search', path: '/search', icon: Search },
+    { label: 'Acts & Provisions', path: '/acts', icon: BookOpen },
     { label: 'Verify', path: '/verify', icon: ShieldCheck },
     { label: 'Comparator', path: '/compare', icon: GitCompare },
     { label: 'Bookmarks', path: '/bookmarks', icon: Bookmark },
   ],
   public: [
-    { label: 'Search', path: '/search', icon: Search },
-    { label: 'Verify', path: '/verify', icon: ShieldCheck },
+    { label: 'Case Search', path: '/search', icon: Search },
+    { label: 'Acts & Provisions', path: '/acts', icon: BookOpen },
+    { label: 'Verify Document', path: '/verify', icon: ShieldCheck },
     { label: 'Comparator', path: '/compare', icon: GitCompare },
   ],
 };
@@ -125,7 +133,7 @@ const Navbar = () => {
         {/* Brand / Logo */}
         <div className="flex items-center gap-8">
           <Link
-            to={isAuthenticated ? '/dashboard' : '/'}
+            to="/"
             className="flex items-center gap-2.5 group focus:outline-hidden"
           >
             <div className="w-10 h-10 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-amber-400 group-hover:border-amber-400/50 transition-colors shadow-inner">

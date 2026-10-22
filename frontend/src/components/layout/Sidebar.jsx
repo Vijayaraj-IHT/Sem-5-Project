@@ -3,17 +3,13 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
   Upload,
-  ClipboardCheck,
-  ScrollText,
-  Shield,
-  BarChart3,
   Search,
-  FileEdit,
   Bookmark,
-  Scale,
-  BookOpen,
   ShieldCheck,
   GitCompare,
+  BookOpen,
+  Shield,
+  User,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -21,52 +17,68 @@ const SIDEBAR_ITEMS_BY_ROLE = {
   senior_staff: [
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { label: 'Case Search', path: '/search', icon: Search },
+    { label: 'Acts & Provisions', path: '/acts', icon: BookOpen },
     { label: 'Verify Document', path: '/verify', icon: ShieldCheck },
     { label: 'Comparator', path: '/compare', icon: GitCompare },
     { label: 'Upload Case', path: '/upload', icon: Upload },
+    { label: 'Audit Ledger', path: '/admin/audit', icon: Shield },
     { label: 'Bookmarks', path: '/bookmarks', icon: Bookmark },
+    { label: 'Account Profile', path: '/profile', icon: User },
   ],
   staff: [
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { label: 'Case Search', path: '/search', icon: Search },
+    { label: 'Acts & Provisions', path: '/acts', icon: BookOpen },
     { label: 'Verify Document', path: '/verify', icon: ShieldCheck },
     { label: 'Comparator', path: '/compare', icon: GitCompare },
     { label: 'Upload Case', path: '/upload', icon: Upload },
+    { label: 'Audit Ledger', path: '/admin/audit', icon: Shield },
     { label: 'Bookmarks', path: '/bookmarks', icon: Bookmark },
+    { label: 'Account Profile', path: '/profile', icon: User },
   ],
   court_staff: [
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { label: 'Case Search', path: '/search', icon: Search },
+    { label: 'Acts & Provisions', path: '/acts', icon: BookOpen },
     { label: 'Verify Document', path: '/verify', icon: ShieldCheck },
     { label: 'Comparator', path: '/compare', icon: GitCompare },
     { label: 'Upload Case', path: '/upload', icon: Upload },
+    { label: 'Audit Ledger', path: '/admin/audit', icon: Shield },
     { label: 'Bookmarks', path: '/bookmarks', icon: Bookmark },
+    { label: 'Account Profile', path: '/profile', icon: User },
   ],
   junior_staff: [
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { label: 'Case Search', path: '/search', icon: Search },
+    { label: 'Acts & Provisions', path: '/acts', icon: BookOpen },
     { label: 'Verify Document', path: '/verify', icon: ShieldCheck },
     { label: 'Comparator', path: '/compare', icon: GitCompare },
     { label: 'Upload Case', path: '/upload', icon: Upload },
     { label: 'Bookmarks', path: '/bookmarks', icon: Bookmark },
+    { label: 'Account Profile', path: '/profile', icon: User },
   ],
   advocate: [
     { label: 'Case Search', path: '/search', icon: Search },
+    { label: 'Acts & Provisions', path: '/acts', icon: BookOpen },
     { label: 'Verify Document', path: '/verify', icon: ShieldCheck },
     { label: 'Comparator', path: '/compare', icon: GitCompare },
-    { label: 'Draft Analysis', path: '/drafts', icon: FileEdit },
     { label: 'Bookmarks', path: '/bookmarks', icon: Bookmark },
+    { label: 'Account Profile', path: '/profile', icon: User },
   ],
   scholar: [
     { label: 'Case Search', path: '/search', icon: Search },
+    { label: 'Acts & Provisions', path: '/acts', icon: BookOpen },
     { label: 'Verify Document', path: '/verify', icon: ShieldCheck },
     { label: 'Comparator', path: '/compare', icon: GitCompare },
     { label: 'Bookmarks', path: '/bookmarks', icon: Bookmark },
+    { label: 'Account Profile', path: '/profile', icon: User },
   ],
   public: [
     { label: 'Case Search', path: '/search', icon: Search },
+    { label: 'Acts & Provisions', path: '/acts', icon: BookOpen },
     { label: 'Verify Document', path: '/verify', icon: ShieldCheck },
     { label: 'Comparator', path: '/compare', icon: GitCompare },
+    { label: 'Account Profile', path: '/profile', icon: User },
   ],
 };
 
@@ -98,14 +110,14 @@ const Sidebar = () => {
                 key={item.path}
                 to={item.path}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 px-3.5 py-2.5 rounded-r-lg text-sm transition-all duration-150 ${
+                  `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                     isActive
-                      ? 'bg-slate-700/90 text-amber-400 border-l-4 border-amber-400 font-semibold shadow-xs'
-                      : 'text-slate-300 hover:bg-slate-700/50 hover:text-white border-l-4 border-transparent font-medium'
+                      ? 'bg-amber-500/10 text-amber-400 font-semibold border-l-4 border-amber-500'
+                      : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
                   }`
                 }
               >
-                <Icon className="w-5 h-5 shrink-0" aria-hidden="true" />
+                <Icon className="w-5 h-5 shrink-0" />
                 <span className="truncate">{item.label}</span>
               </NavLink>
             );
@@ -113,20 +125,18 @@ const Sidebar = () => {
         </nav>
       </div>
 
-      {/* Bottom section: App version & copyright */}
-      <div className="p-4 border-t border-slate-700/60 bg-slate-800/90 text-slate-400 text-xs">
-        <div className="flex items-center justify-between font-mono text-[11px] text-slate-400 mb-1">
-          <span>LEXGUARD CORE</span>
-          <span className="px-1.5 py-0.5 rounded bg-slate-700 text-amber-400 text-[10px] font-bold">
-            v1.0.0
-          </span>
+      {/* Footer System Status Badge */}
+      <div className="p-4 border-t border-slate-700/60 text-xs text-slate-400 font-mono">
+        <div className="flex items-center gap-2 text-emerald-400 mb-1">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span>CIS v3.2 Ledger Online</span>
         </div>
-        <p className="text-[11px] text-slate-400 leading-tight">
-          &copy; {CURRENT_YEAR} Lexguard Judiciary. All rights reserved.
-        </p>
+        <div className="text-[10px] text-slate-500">
+          Madras HC • {CURRENT_YEAR}
+        </div>
       </div>
     </aside>
   );
 };
 
-export default React.memo(Sidebar);
+export default Sidebar;

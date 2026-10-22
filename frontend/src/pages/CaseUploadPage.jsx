@@ -245,7 +245,7 @@ export default function CaseUploadPage() {
         </div>
 
         <Link
-          to="/approval-queue"
+          to="/dashboard?tab=queue"
           className="hidden sm:inline-flex items-center gap-2 px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 transition-colors"
         >
           <span>Approval Queue</span>
@@ -338,7 +338,7 @@ export default function CaseUploadPage() {
               Upload Another Case
             </button>
             <Link
-              to="/approval-queue"
+              to="/dashboard?tab=queue"
               className="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs border border-slate-700 inline-flex items-center gap-1"
             >
               <span>View in Queue</span>

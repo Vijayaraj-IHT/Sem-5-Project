@@ -4,10 +4,12 @@ from pydantic import BaseModel, Field
 
 class SearchFilters(BaseModel):
     court: Optional[str] = None
+    bench: Optional[str] = None
     year_from: Optional[int] = Field(default=None, ge=1900)
     year_to: Optional[int] = Field(default=None, le=2100)
     act: Optional[str] = None
     outcome: Optional[str] = None
+    disposition: Optional[str] = None
 
 
 class SearchRequest(BaseModel):
@@ -26,10 +28,19 @@ class SearchResultItem(BaseModel):
     matched_sections: List[str] = []
     relevance_score: float
     outcome: Optional[str] = None
+    disposition: Optional[str] = None
+    judge: Optional[str] = None
     summary: Optional[str] = None
+    ratio_decidendi: Optional[str] = None
     file_hash: str
+    redacted_file_hash: Optional[str] = None
+    act_tags: List[str] = []
+    section_tags: List[str] = []
+    keyword_tags: List[str] = []
     matched_snippets: List[str] = []
     matched_keywords: List[str] = []
+    source_url: Optional[str] = None
+    rrf_score: Optional[float] = None
 
 
 class SearchResponse(BaseModel):

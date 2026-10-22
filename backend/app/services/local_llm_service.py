@@ -35,10 +35,12 @@ class LocalLLMService:
             import torch
             from transformers import AutoModelForCausalLM, AutoTokenizer
 
+            hf_token = settings.HF_TOKEN.strip() if (settings.HF_TOKEN and isinstance(settings.HF_TOKEN, str) and settings.HF_TOKEN.strip()) else None
+
             logger.info(f"Loading Hugging Face local LLM: {self.model_name}...")
             self._tokenizer = AutoTokenizer.from_pretrained(
                 self.model_name,
-                token=settings.HF_TOKEN,
+                token=hf_token,
                 trust_remote_code=True,
             )
 
@@ -47,7 +49,7 @@ class LocalLLMService:
 
             self._model = AutoModelForCausalLM.from_pretrained(
                 self.model_name,
-                token=settings.HF_TOKEN,
+                token=hf_token,
                 torch_dtype=torch_dtype,
                 device_map="auto" if self.device != "cpu" else None,
                 trust_remote_code=True,

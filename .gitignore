@@ -48,6 +48,8 @@ models_cache/
 lexguard.db
 storage/
 backend/storage/
+incoming_cases/
+backend/incoming_cases/
 backend/uploads/
 uploads/
 temp/

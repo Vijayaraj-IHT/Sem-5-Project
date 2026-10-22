@@ -87,14 +87,42 @@ def approve_or_reject_case(
     db.commit()
     db.refresh(case)
 
-    # Immutable Audit Log
+    # Immutable Audit Log & Composite Judicial Seal Phi_case Calculation
     action_type = "APPROVE" if review_in.status == "published" else "REJECT"
+    details_str = f"Case status changed to {review_in.status}. Note: {review_in.review_note or 'None'}"
+
+    if review_in.status == "published":
+        import hashlib
+        # 1. H_doc = raw PDF SHA-256
+        h_doc = case.file_hash or ""
+        # 2. H_meta = SHA-256(case_no | court | judge | disposition | year)
+        meta_str = f"{case.case_no}|{case.court}|{case.judge or ''}|{case.disposition or ''}|{case.year}"
+        h_meta = hashlib.sha256(meta_str.encode("utf-8")).hexdigest()
+        # 3. H_text = SHA-256(full_text)
+        h_text = hashlib.sha256((case.full_text or "").encode("utf-8")).hexdigest()
+        # 4. T_approved = ISO timestamp
+        t_approved = case.approved_at.isoformat()
+        # 5. Composite Judicial Seal: Phi_case = SHA-256(H_doc || H_meta || H_text || T_approved)
+        seal_payload = f"{h_doc}|{h_meta}|{h_text}|{t_approved}"
+        judicial_seal = hashlib.sha256(seal_payload.encode("utf-8")).hexdigest()
+
+        case.redacted_file_hash = judicial_seal
+        db.commit()
+        db.refresh(case)
+
+        details_str = (
+            f"Case approved and judicial seal affixed. "
+            f"Seal(Phi_case): {judicial_seal} "
+            f"[H_doc: {h_doc[:8]}.., H_meta: {h_meta[:8]}.., H_text: {h_text[:8]}..]. "
+            f"Note: {review_in.review_note or 'Verified'}"
+        )
+
     log_audit_event(
         db=db,
         action=action_type,
         user_id=current_user.id,
         case_id=case.id,
-        details=f"Case status changed to {review_in.status}. Note: {review_in.review_note or 'None'}",
+        details=details_str,
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
     )

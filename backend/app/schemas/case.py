@@ -105,3 +105,23 @@ class CaseStatusUpdate(BaseModel):
     status: str = Field(..., pattern="^(pending_review|pending_approval|published|rejected|quarantined)$")
     review_note: Optional[str] = Field(default=None, max_length=1000)
 
+
+class CaseMetadataUpdate(BaseModel):
+    case_no: Optional[str] = None
+    title: Optional[str] = None
+    court: Optional[str] = None
+    year: Optional[int] = None
+    judge: Optional[str] = None
+    parties: Optional[str] = None
+    disposition: Optional[str] = None
+    outcome: Optional[str] = None
+    precedential_status: Optional[str] = None
+    facts: Optional[str] = None
+    ratio_decidendi: Optional[str] = None
+    summary: Optional[str] = None
+    act_tags: Optional[List[str]] = None
+    section_tags: Optional[List[str]] = None
+    keyword_tags: Optional[List[str]] = None
+    source_url: Optional[str] = None
+
+

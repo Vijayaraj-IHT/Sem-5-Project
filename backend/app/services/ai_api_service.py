@@ -5,6 +5,7 @@ providing graceful fallback to in-process heuristics when the AI service is offl
 """
 
 import logging
+import time
 from typing import List, Dict, Any, Optional
 import httpx
 from app.core.config import settings
@@ -15,35 +16,58 @@ logger = logging.getLogger(__name__)
 class AIApiService:
     """
     HTTP client interface to communicate with the standalone AI Microservice.
+    Features circuit-breaker caching to prevent connection timeouts when microservice is offline.
     """
 
-    def __init__(self, base_url: Optional[str] = None, timeout: float = 8.0):
+    def __init__(self, base_url: Optional[str] = None, timeout: float = 2.0):
         self.base_url = (base_url or getattr(settings, "AI_SERVICE_URL", "http://127.0.0.1:8001")).rstrip("/")
         self.timeout = timeout
+        self._is_online: Optional[bool] = None
+        self._last_check_ts: float = 0.0
+        self._retry_interval: float = 30.0  # seconds before retrying offline service
+
+    def _should_attempt_remote(self) -> bool:
+        """Determines if the remote microservice should be contacted or fallback used immediately."""
+        now = time.time()
+        if self._is_online is False and (now - self._last_check_ts) < self._retry_interval:
+            return False
+        return True
+
+    def _mark_offline(self):
+        """Marks remote microservice as offline and updates timestamp."""
+        self._is_online = False
+        self._last_check_ts = time.time()
 
     def check_health(self) -> Dict[str, Any]:
         """Checks connectivity to the AI microservice."""
+        if not self._should_attempt_remote():
+            return {"status": "offline", "service": "lexguard-ai-service", "fallback": "in-process"}
         try:
-            with httpx.Client(timeout=3.0) as client:
+            with httpx.Client(timeout=1.5) as client:
                 res = client.get(f"{self.base_url}/health")
                 if res.status_code == 200:
+                    self._is_online = True
                     return res.json()
         except Exception as e:
-            logger.warning(f"AI Microservice health check failed ({self.base_url}): {e}")
+            self._mark_offline()
+            logger.debug(f"AI Microservice health check failed ({self.base_url}): {e}")
         return {"status": "offline", "service": "lexguard-ai-service", "fallback": "in-process"}
 
     def extract_ner(self, text: str, court_context: Optional[str] = None) -> Dict[str, Any]:
         """
         Calls /ner on the AI service to extract acts, sections, parties, and judges.
         """
-        payload = {"text": text, "court_context": court_context}
-        try:
-            with httpx.Client(timeout=self.timeout) as client:
-                res = client.post(f"{self.base_url}/ner", json=payload)
-                if res.status_code == 200:
-                    return res.json()
-        except Exception as e:
-            logger.warning(f"AI Service /ner call failed, using heuristic fallback: {e}")
+        if self._should_attempt_remote():
+            payload = {"text": text, "court_context": court_context}
+            try:
+                with httpx.Client(timeout=self.timeout) as client:
+                    res = client.post(f"{self.base_url}/ner", json=payload)
+                    if res.status_code == 200:
+                        self._is_online = True
+                        return res.json()
+            except Exception as e:
+                self._mark_offline()
+                logger.debug(f"AI Service /ner call failed, using heuristic fallback: {e}")
 
         # In-process regex fallback
         import re
@@ -68,14 +92,17 @@ class AIApiService:
         """
         Calls /embed on the AI service to generate dense vector representations.
         """
-        payload = {"texts": texts}
-        try:
-            with httpx.Client(timeout=self.timeout) as client:
-                res = client.post(f"{self.base_url}/embed", json=payload)
-                if res.status_code == 200:
-                    return res.json().get("embeddings", [])
-        except Exception as e:
-            logger.warning(f"AI Service /embed call failed, using fallback: {e}")
+        if self._should_attempt_remote():
+            payload = {"texts": texts}
+            try:
+                with httpx.Client(timeout=self.timeout) as client:
+                    res = client.post(f"{self.base_url}/embed", json=payload)
+                    if res.status_code == 200:
+                        self._is_online = True
+                        return res.json().get("embeddings", [])
+            except Exception as e:
+                self._mark_offline()
+                logger.debug(f"AI Service /embed call failed, using fallback: {e}")
 
         # Fallback to local embedding service if imported
         try:
@@ -88,14 +115,17 @@ class AIApiService:
         """
         Calls /summarize on the AI service to synthesize a legal abstract.
         """
-        payload = {"text": text, "max_sentences": max_sentences, "court": court, "case_no": case_no}
-        try:
-            with httpx.Client(timeout=self.timeout) as client:
-                res = client.post(f"{self.base_url}/summarize", json=payload)
-                if res.status_code == 200:
-                    return res.json().get("summary", "")
-        except Exception as e:
-            logger.warning(f"AI Service /summarize call failed, using fallback: {e}")
+        if self._should_attempt_remote():
+            payload = {"text": text, "max_sentences": max_sentences, "court": court, "case_no": case_no}
+            try:
+                with httpx.Client(timeout=self.timeout) as client:
+                    res = client.post(f"{self.base_url}/summarize", json=payload)
+                    if res.status_code == 200:
+                        self._is_online = True
+                        return res.json().get("summary", "")
+            except Exception as e:
+                self._mark_offline()
+                logger.debug(f"AI Service /summarize call failed, using fallback: {e}")
 
         court_name = court or "The High Court"
         case_ref = f"in {case_no}" if case_no else "in the present matter"
@@ -105,14 +135,17 @@ class AIApiService:
         """
         Calls /extract-ratio on the AI service.
         """
-        payload = {"text": text, "prayer": prayer, "outcome": outcome, "acts_cited": acts_cited or []}
-        try:
-            with httpx.Client(timeout=self.timeout) as client:
-                res = client.post(f"{self.base_url}/extract-ratio", json=payload)
-                if res.status_code == 200:
-                    return res.json()
-        except Exception as e:
-            logger.warning(f"AI Service /extract-ratio call failed, using fallback: {e}")
+        if self._should_attempt_remote():
+            payload = {"text": text, "prayer": prayer, "outcome": outcome, "acts_cited": acts_cited or []}
+            try:
+                with httpx.Client(timeout=self.timeout) as client:
+                    res = client.post(f"{self.base_url}/extract-ratio", json=payload)
+                    if res.status_code == 200:
+                        self._is_online = True
+                        return res.json()
+            except Exception as e:
+                self._mark_offline()
+                logger.debug(f"AI Service /extract-ratio call failed, using fallback: {e}")
 
         acts_str = ", ".join(acts_cited[:2]) if acts_cited else "the relevant statute"
         out_str = outcome or "Decided"

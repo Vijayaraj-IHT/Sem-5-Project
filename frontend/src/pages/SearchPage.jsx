@@ -19,6 +19,11 @@ import {
   AlertCircle,
   Tag,
   CheckCircle2,
+  Gavel,
+  ShieldCheck,
+  Copy,
+  Check,
+  Filter,
 } from 'lucide-react';
 import { searchCases } from '../api/search';
 import { getBookmarks, addBookmark, removeBookmark } from '../api/bookmarks';
@@ -32,13 +37,29 @@ const COURT_OPTIONS = [
   'Tribunal',
 ];
 
-const OUTCOME_OPTIONS = [
-  'All',
+const BENCH_OPTIONS = [
+  'All Benches',
+  'Madras High Court (Principal Seat, Chennai)',
+  'Madras High Court (Madurai Bench)',
+  'Supreme Court of India',
+];
+
+const DISPOSITION_OPTIONS = [
+  'All Dispositions',
   'Allowed',
   'Dismissed',
   'Partly Allowed',
-  'Acquitted',
-  'Convicted',
+  'Quashed',
+  'Disposed of',
+  'Remanded',
+];
+
+const QUICK_SEARCH_CHIPS = [
+  { label: 'Anticipatory Bail (BNSS 482)', query: 'anticipatory bail apprehension of arrest BNSS 482' },
+  { label: 'S. 482 CrPC FIR Quashing', query: 'quashing FIR abuse of process criminal proceedings' },
+  { label: 'S. 138 NI Act Cheque Bounce', query: 'Section 138 Negotiable Instruments Act cheque bounce' },
+  { label: 'NDPS Commercial Quantity Bail', query: 'NDPS Act Section 37 commercial quantity twin conditions' },
+  { label: 'Madras HC Article 226 Writs', query: 'Article 226 writ petition mandamus judicial review' },
 ];
 
 const PAGE_SIZE = 10;
@@ -92,11 +113,14 @@ const SearchPage = () => {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [filters, setFilters] = useState({
     court: searchParams.get('court') || 'All Courts',
+    bench: searchParams.get('bench') || 'All Benches',
     year_from: searchParams.get('year_from') || '',
     year_to: searchParams.get('year_to') || '',
     act: searchParams.get('act') || '',
     outcome: searchParams.get('outcome') || 'All',
+    disposition: searchParams.get('disposition') || 'All Dispositions',
   });
+  const [copiedCitationId, setCopiedCitationId] = useState(null);
 
   // Results & Pagination state
   const [results, setResults] = useState([]);
@@ -142,7 +166,7 @@ const SearchPage = () => {
     fetchUserBookmarks();
   }, [fetchUserBookmarks]);
 
-  // Execute Search API call
+  // Execute Search API call with RRF Fusion
   const performSearch = useCallback(
     async (searchQuery, appliedFilters, page = 1) => {
       setLoading(true);
@@ -153,6 +177,12 @@ const SearchPage = () => {
       const filterPayload = {};
       if (appliedFilters.court && appliedFilters.court !== 'All Courts') {
         filterPayload.court = appliedFilters.court;
+      }
+      if (appliedFilters.bench && appliedFilters.bench !== 'All Benches') {
+        filterPayload.bench = appliedFilters.bench;
+      }
+      if (appliedFilters.disposition && appliedFilters.disposition !== 'All Dispositions') {
+        filterPayload.disposition = appliedFilters.disposition;
       }
       if (appliedFilters.year_from) {
         filterPayload.year_from = parseInt(appliedFilters.year_from, 10);
@@ -210,6 +240,8 @@ const SearchPage = () => {
     const nextParams = new URLSearchParams();
     if (query.trim()) nextParams.set('q', query.trim());
     if (filters.court && filters.court !== 'All Courts') nextParams.set('court', filters.court);
+    if (filters.bench && filters.bench !== 'All Benches') nextParams.set('bench', filters.bench);
+    if (filters.disposition && filters.disposition !== 'All Dispositions') nextParams.set('disposition', filters.disposition);
     if (filters.year_from) nextParams.set('year_from', filters.year_from);
     if (filters.year_to) nextParams.set('year_to', filters.year_to);
     if (filters.act) nextParams.set('act', filters.act);
@@ -231,14 +263,31 @@ const SearchPage = () => {
   const handleResetFilters = () => {
     const defaultFilters = {
       court: 'All Courts',
+      bench: 'All Benches',
       year_from: '',
       year_to: '',
       act: '',
       outcome: 'All',
+      disposition: 'All Dispositions',
     };
     setFilters(defaultFilters);
     setCurrentPage(1);
     performSearch(query.trim(), defaultFilters, 1);
+  };
+
+  // Copy Citation Helper
+  const handleCopyCitation = (result, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const citation = `${result.title}, ${result.court || 'Court of Record'} (${result.year || 'n.d.'})${
+      result.case_no ? ` [${result.case_no}]` : ''
+    }`;
+    navigator.clipboard.writeText(citation).then(() => {
+      setCopiedCitationId(result.id);
+      setTimeout(() => {
+        setCopiedCitationId((curr) => (curr === result.id ? null : curr));
+      }, 2500);
+    });
   };
 
   // Toggle Bookmark handler
@@ -335,6 +384,8 @@ const SearchPage = () => {
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   const activeFiltersCount = [
     filters.court !== 'All Courts',
+    filters.bench !== 'All Benches',
+    filters.disposition !== 'All Dispositions',
     Boolean(filters.year_from),
     Boolean(filters.year_to),
     Boolean(filters.act && filters.act.trim()),
@@ -356,7 +407,7 @@ const SearchPage = () => {
                 Judicial Precedent & Case Search
               </h1>
               <p className="text-xs sm:text-sm text-slate-400">
-                Hybrid AI retrieval fusing Hugging Face vector embeddings, statutory section overlap, and keyword matching.
+                Hybrid AI retrieval fusing Reciprocal Rank Fusion (RRF), Hugging Face vector embeddings, and official judgment text.
               </p>
             </div>
           </div>
@@ -372,7 +423,7 @@ const SearchPage = () => {
                   type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search legal cases, statutes, or judgments..."
+                  placeholder="Search legal cases, CNR numbers (TNCH... / TNMD...), statutes, or judgments..."
                   className="w-full pl-11 pr-10 py-3.5 bg-slate-800/90 hover:bg-slate-800 focus:bg-slate-800 text-white placeholder-slate-400 rounded-xl border border-slate-700 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 text-base outline-hidden transition-all duration-200"
                 />
                 {query && (
@@ -407,13 +458,37 @@ const SearchPage = () => {
             </div>
           </form>
 
+          {/* Quick Legal Topic Chips Strip */}
+          <div className="mt-3.5 flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+            <span className="text-[11px] font-semibold text-slate-400 shrink-0 flex items-center gap-1 mr-1">
+              <Sparkles className="w-3 h-3 text-amber-400" />
+              Quick Searches:
+            </span>
+            {QUICK_SEARCH_CHIPS.map((chip, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => {
+                  setQuery(chip.query);
+                  const nextParams = new URLSearchParams(searchParams);
+                  nextParams.set('q', chip.query);
+                  setSearchParams(nextParams);
+                  performSearch(chip.query, filters, 1);
+                }}
+                className="text-[11px] px-2.5 py-1 rounded-full bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 hover:border-slate-600 transition-colors shrink-0 cursor-pointer"
+              >
+                {chip.label}
+              </button>
+            ))}
+          </div>
+
           {/* Advanced Filters Toggle & Active Tags */}
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 pt-2">
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setFiltersOpen((prev) => !prev)}
-                className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold border transition-all ${
+                className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
                   filtersOpen || activeFiltersCount > 0
                     ? 'bg-slate-800 border-amber-400/50 text-amber-300 shadow-sm'
                     : 'bg-slate-800/60 hover:bg-slate-800 border-slate-700 text-slate-300'
@@ -433,7 +508,7 @@ const SearchPage = () => {
                 <button
                   type="button"
                   onClick={handleResetFilters}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-white bg-slate-800/40 hover:bg-slate-800 border border-slate-700/60 transition-colors"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-white bg-slate-800/40 hover:bg-slate-800 border border-slate-700/60 transition-colors cursor-pointer"
                   title="Clear all filters"
                 >
                   <RotateCcw className="w-3 h-3" />
@@ -445,27 +520,45 @@ const SearchPage = () => {
             {/* Quick Helper Suggestion */}
             <div className="text-xs text-slate-400 flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-              <span>Supports natural language queries (e.g. &quot;anticipatory bail IPC 420&quot;)</span>
+              <span>Supports natural language queries (e.g. &quot;anticipatory bail BNSS 482&quot;)</span>
             </div>
           </div>
 
           {/* Expandable Filters Panel */}
           {filtersOpen && (
             <div className="mt-4 p-5 bg-slate-800/90 backdrop-blur-sm border border-slate-700 rounded-xl shadow-xl animate-in fade-in slide-in-from-top-2 duration-200">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* Court Level Dropdown */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* Judicial Bench Dropdown */}
                 <div>
                   <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                    Court Level
+                    Judicial Bench
                   </label>
                   <select
-                    value={filters.court}
-                    onChange={(e) => setFilters({ ...filters, court: e.target.value })}
+                    value={filters.bench}
+                    onChange={(e) => setFilters({ ...filters, bench: e.target.value })}
                     className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-2 text-sm focus:border-amber-400 focus:ring-1 focus:ring-amber-400 outline-hidden"
                   >
-                    {COURT_OPTIONS.map((court) => (
-                      <option key={court} value={court}>
-                        {court}
+                    {BENCH_OPTIONS.map((bench) => (
+                      <option key={bench} value={bench}>
+                        {bench}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Disposition Dropdown */}
+                <div>
+                  <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                    Operative Disposition
+                  </label>
+                  <select
+                    value={filters.disposition}
+                    onChange={(e) => setFilters({ ...filters, disposition: e.target.value })}
+                    className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-2 text-sm focus:border-amber-400 focus:ring-1 focus:ring-amber-400 outline-hidden"
+                  >
+                    {DISPOSITION_OPTIONS.map((disp) => (
+                      <option key={disp} value={disp}>
+                        {disp}
                       </option>
                     ))}
                   </select>
@@ -498,36 +591,45 @@ const SearchPage = () => {
                   </div>
                 </div>
 
-                {/* Act / Statute Input */}
-                <div>
+                {/* Act / Statute Input & Presets */}
+                <div className="sm:col-span-2 lg:col-span-3">
                   <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                    Act / Statute
+                    Act / Statutory Sanhita
                   </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. IPC, CrPC, Contract Act"
-                    value={filters.act}
-                    onChange={(e) => setFilters({ ...filters, act: e.target.value })}
-                    className="w-full bg-slate-900 border border-slate-700 text-white placeholder-slate-500 rounded-lg px-3 py-2 text-sm focus:border-amber-400 outline-hidden"
-                  />
-                </div>
-
-                {/* Outcome Dropdown */}
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                    Judgment Outcome
-                  </label>
-                  <select
-                    value={filters.outcome}
-                    onChange={(e) => setFilters({ ...filters, outcome: e.target.value })}
-                    className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-2 text-sm focus:border-amber-400 focus:ring-1 focus:ring-amber-400 outline-hidden"
-                  >
-                    {OUTCOME_OPTIONS.map((out) => (
-                      <option key={out} value={out}>
-                        {out}
-                      </option>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <input
+                      type="text"
+                      placeholder="e.g. BNSS, CrPC, BNS, IPC, Negotiable Instruments Act, NDPS"
+                      value={filters.act}
+                      onChange={(e) => setFilters({ ...filters, act: e.target.value })}
+                      className="flex-1 bg-slate-900 border border-slate-700 text-white placeholder-slate-500 rounded-lg px-3 py-2 text-sm focus:border-amber-400 outline-hidden"
+                    />
+                    {filters.act && (
+                      <button
+                        type="button"
+                        onClick={() => setFilters({ ...filters, act: '' })}
+                        className="px-2.5 py-2 text-xs text-slate-400 hover:text-white bg-slate-900 border border-slate-700 rounded-lg"
+                      >
+                        Clear Act
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {['BNSS', 'CrPC', 'BNS', 'IPC', 'NI Act', 'NDPS', 'Constitution'].map((preset) => (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => setFilters({ ...filters, act: preset })}
+                        className={`text-[10px] px-2 py-0.5 rounded border transition-colors cursor-pointer ${
+                          filters.act === preset
+                            ? 'bg-amber-400/20 text-amber-300 border-amber-400/50'
+                            : 'bg-slate-900 text-slate-400 border-slate-700 hover:text-white hover:bg-slate-800'
+                        }`}
+                      >
+                        {preset}
+                      </button>
                     ))}
-                  </select>
+                  </div>
                 </div>
               </div>
 
@@ -536,14 +638,14 @@ const SearchPage = () => {
                 <button
                   type="button"
                   onClick={handleResetFilters}
-                  className="px-3.5 py-1.5 text-xs font-medium text-slate-400 hover:text-white rounded-md hover:bg-slate-700 transition-colors"
+                  className="px-3.5 py-1.5 text-xs font-medium text-slate-400 hover:text-white rounded-md hover:bg-slate-700 transition-colors cursor-pointer"
                 >
                   Reset Defaults
                 </button>
                 <button
                   type="button"
                   onClick={handleSearchSubmit}
-                  className="px-4 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold rounded-md text-xs transition-colors shadow-xs"
+                  className="px-4 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold rounded-md text-xs transition-colors shadow-xs cursor-pointer"
                 >
                   Apply Filters
                 </button>
@@ -725,13 +827,21 @@ const SearchPage = () => {
                     </div>
                   </div>
 
-                  {/* Metadata Row: Court, Year, Outcome */}
+                  {/* Metadata Row: Court/Bench, Coram Judge, Year, Disposition, Citation Count */}
                   <div className="mt-3.5 flex flex-wrap items-center gap-2 text-xs">
-                    {/* Court Badge */}
+                    {/* Court & Bench Badge */}
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-900 border border-slate-700 text-slate-300 font-medium">
                       <Building2 className="w-3.5 h-3.5 text-amber-400" />
-                      {result.court || 'Court Not Specified'}
+                      {result.court || 'High Court of Judicature'}
                     </span>
+
+                    {/* Coram / Judge */}
+                    {result.judge && (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-900 border border-slate-700 text-slate-300 font-medium">
+                        <Gavel className="w-3.5 h-3.5 text-amber-400" />
+                        Hon&apos;ble {result.judge}
+                      </span>
+                    )}
 
                     {/* Year Badge */}
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-900 border border-slate-700 text-slate-300 font-medium">
@@ -739,10 +849,21 @@ const SearchPage = () => {
                       {result.year || 'N/A'}
                     </span>
 
-                    {/* Outcome Badge */}
-                    {result.outcome && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-900/80 border border-slate-700 text-slate-300 font-medium capitalize">
-                        Outcome: <span className="text-white font-semibold">{result.outcome}</span>
+                    {/* Operative Disposition Badge */}
+                    {(result.disposition || result.outcome) && (
+                      <span
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md font-semibold border capitalize ${
+                          (result.disposition || result.outcome).toLowerCase().includes('allow')
+                            ? 'bg-emerald-950/80 text-emerald-300 border-emerald-800'
+                            : (result.disposition || result.outcome).toLowerCase().includes('dismiss')
+                            ? 'bg-rose-950/80 text-rose-300 border-rose-800'
+                            : (result.disposition || result.outcome).toLowerCase().includes('quash')
+                            ? 'bg-indigo-950/80 text-indigo-300 border-indigo-800'
+                            : 'bg-amber-950/80 text-amber-300 border-amber-800'
+                        }`}
+                      >
+                        <Scale className="w-3 h-3" />
+                        <span>{result.disposition || result.outcome}</span>
                       </span>
                     )}
 
@@ -755,6 +876,19 @@ const SearchPage = () => {
                       {citationCount} {citationCount === 1 ? 'Citation' : 'Citations'}
                     </span>
                   </div>
+
+                  {/* Binding Ratio Decidendi (Illuminated Legal Principle) */}
+                  {result.ratio_decidendi && (
+                    <div className="mt-3 p-3.5 rounded-xl bg-emerald-950/20 border-l-4 border-emerald-500 text-xs text-emerald-100">
+                      <div className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-400 uppercase tracking-wider mb-1">
+                        <Gavel className="w-3 h-3" />
+                        <span>Binding Ratio Decidendi</span>
+                      </div>
+                      <p className="italic font-serif leading-relaxed">
+                        &ldquo;{result.ratio_decidendi}&rdquo;
+                      </p>
+                    </div>
+                  )}
 
                   {/* Matched Sections Highlight */}
                   {matchedSections.length > 0 && (
@@ -807,16 +941,51 @@ const SearchPage = () => {
                     </div>
                   )}
 
-                  {/* Action Bar: View Case & Bookmark */}
-                  <div className="mt-4 pt-3.5 border-t border-slate-700/60 flex items-center justify-between">
+                  {/* Action Bar: Compare, Cite, Bookmark, View Case */}
+                  <div className="mt-4 pt-3.5 border-t border-slate-700/60 flex flex-wrap items-center justify-between gap-3">
+                    {/* Cryptographic Verification Link */}
                     <div className="text-xs text-slate-400 flex items-center gap-1.5">
-                      <FileText className="w-3.5 h-3.5 text-slate-400" />
-                      <span className="font-mono text-[11px] text-slate-400">
-                        {result.file_hash ? `SHA: ${result.file_hash.substring(0, 10)}...` : 'Verified Record'}
-                      </span>
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                      <Link
+                        to={`/verify?hash=${result.file_hash}`}
+                        className="font-mono text-[11px] text-slate-400 hover:text-amber-300 transition-colors"
+                        title="Verify SHA-256 seal"
+                      >
+                        {result.file_hash ? `SHA: ${result.file_hash.substring(0, 12)}...` : 'Verified Record'}
+                      </Link>
                     </div>
 
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {/* Copy Citation Button */}
+                      <button
+                        type="button"
+                        onClick={(e) => handleCopyCitation(result, e)}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 transition-colors cursor-pointer"
+                        title="Copy bluebook legal citation"
+                      >
+                        {copiedCitationId === result.id ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-emerald-400" />
+                            <span className="text-emerald-300 font-semibold">Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5 text-slate-400" />
+                            <span>Cite</span>
+                          </>
+                        )}
+                      </button>
+
+                      {/* Compare in Precedent Comparator */}
+                      <Link
+                        to={`/compare?precedentId=${result.id}`}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-950/80 hover:bg-indigo-900 text-indigo-300 border border-indigo-800/80 transition-colors"
+                        title="Send precedent directly into the Precedent Comparator matrix"
+                      >
+                        <Scale className="w-3.5 h-3.5 text-indigo-400" />
+                        <span>Compare</span>
+                      </Link>
+
                       {/* Bookmark Toggle Button */}
                       <button
                         type="button"
@@ -840,7 +1009,7 @@ const SearchPage = () => {
                             isBookmarked ? 'fill-rose-400 text-rose-400' : 'text-slate-400'
                           }`}
                         />
-                        <span>{isBookmarked ? 'Bookmarked' : 'Bookmark'}</span>
+                        <span>{isBookmarked ? 'Saved' : 'Bookmark'}</span>
                       </button>
 
                       {/* View Case Link Button */}

@@ -6,6 +6,8 @@ from app.schemas.comparison import (
     CaseComparisonResponse,
     DimensionComparisonResult,
     PrecedentSummary,
+    MultiCaseComparisonRequest,
+    MultiCaseComparisonResponse,
 )
 
 
@@ -326,6 +328,67 @@ class CaseComparisonService:
             score_method="lexguard-deterministic-v1.0",
             dimensions=dimensions,
             precedent=precedent_summary,
+        )
+
+    def compare_multi(
+        self,
+        req: MultiCaseComparisonRequest,
+        precedents: List[Case],
+    ) -> MultiCaseComparisonResponse:
+        """
+        Executes parallel comparison of the user matter against 1 to 3 selected precedents.
+        Calculates individual dimensional scores, cross-precedent statutory divergence,
+        and identifies the highest-alignment ruling.
+        """
+        results: List[CaseComparisonResponse] = []
+        best_id = None
+        best_score = -1.0
+
+        for prec in precedents:
+            single_req = CaseComparisonRequest(
+                precedent_case_id=prec.id,
+                case_title=req.case_title,
+                court_jurisdiction=req.court_jurisdiction,
+                practice_area=req.practice_area,
+                facts_summary=req.facts_summary,
+                legal_issues=req.legal_issues,
+                statutory_provisions=req.statutory_provisions,
+                remedy_sought=req.remedy_sought,
+                procedural_status=req.procedural_status,
+                outcome=req.outcome,
+            )
+            res = self.compare_case(single_req, prec)
+            results.append(res)
+            if res.overall_score > best_score:
+                best_score = res.overall_score
+                best_id = prec.id
+
+        # Build cross-statutory matrix
+        user_provs = [p.strip() for p in (req.statutory_provisions or []) if p.strip()]
+        statutory_matrix = {
+            "user_provisions": user_provs,
+            "precedents": [
+                {
+                    "case_id": prec.id,
+                    "case_no": prec.case_no,
+                    "title": prec.title,
+                    "court": prec.court,
+                    "year": prec.year,
+                    "disposition": prec.disposition or prec.outcome or "Allowed",
+                    "precedential_status": prec.precedential_status or "Good Law",
+                    "act_tags": prec.act_tags or [],
+                    "section_tags": prec.section_tags or [],
+                    "ratio_decidendi": prec.ratio_decidendi or "",
+                }
+                for prec in precedents
+            ],
+        }
+
+        return MultiCaseComparisonResponse(
+            results=results,
+            best_match_id=best_id,
+            best_match_score=best_score if best_score >= 0.0 else 0.0,
+            cross_statutory_matrix=statutory_matrix,
         )
 
 

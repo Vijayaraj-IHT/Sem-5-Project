@@ -22,7 +22,14 @@ def verify_sha256(data: bytes, expected_hash: str) -> bool:
 
 
 def normalize_timestamp(ts: Any) -> str:
-    """Normalizes any timestamp representation (datetime or str) to standard ISO seconds."""
+    """Normalizes any timestamp representation (datetime or str) to standard ISO seconds in UTC."""
+    from datetime import timezone as _tz
+    if hasattr(ts, "astimezone"):
+        try:
+            ts_utc = ts.astimezone(_tz.utc)
+            return ts_utc.strftime("%Y-%m-%dT%H:%M:%S")
+        except Exception:
+            pass
     if hasattr(ts, "strftime"):
         return ts.strftime("%Y-%m-%dT%H:%M:%S")
     s = str(ts).strip()

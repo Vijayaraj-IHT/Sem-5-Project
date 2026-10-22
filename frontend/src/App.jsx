@@ -10,59 +10,61 @@ import ProtectedRoute from './components/common/ProtectedRoute';
 import LoadingSpinner from './components/common/LoadingSpinner';
 
 // Pages
+import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import UnauthorizedPage from './pages/UnauthorizedPage';
 import SearchPage from './pages/SearchPage';
 import CaseViewerPage from './pages/CaseViewerPage';
-import DraftAssistantPage from './pages/DraftAssistantPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import BookmarksPage from './pages/BookmarksPage';
 import CaseUploadPage from './pages/CaseUploadPage';
 import VerifyDocumentPage from './pages/VerifyDocumentPage';
 import CaseComparePage from './pages/CaseComparePage';
-
-/**
- * HomePage — Landing page with role-based redirect for authenticated users
- */
-function HomePage() {
-  const { isAuthenticated, user } = useAuth();
-
-  if (isAuthenticated && user) {
-    const staffRoles = ['senior_staff', 'junior_staff', 'court_staff', 'staff'];
-    if (staffRoles.includes(user.role)) {
-      return <Navigate to="/dashboard" replace />;
-    }
-    return <Navigate to="/search" replace />;
-  }
-
-  return <Navigate to="/login" replace />;
-}
+import ActsExplorerPage from './pages/ActsExplorerPage';
+import CaseReviewPage from './pages/CaseReviewPage';
+import AuditLedgerPage from './pages/AuditLedgerPage';
+import ProfilePage from './pages/ProfilePage';
 
 /**
  * App component — defines all application routes with role-based access control.
  *
  * Route structure:
- * - Public: /login, /register, /search (public view), /unauthorized
- * - Authenticated: /search (full), /cases/:id, /bookmarks
- * - Advocate: /drafts
- * - Staff: /dashboard, /upload
+ * - Public: /, /login, /register, /acts, /search/public, /verify/public, /unauthorized
+ * - Authenticated: /search, /cases/:id, /compare, /verify, /acts, /bookmarks, /profile
+ * - Staff Moderation: /review/:caseId, /admin/audit, /dashboard, /upload
  */
+function ActsRouteWrapper() {
+  const { isAuthenticated } = useAuth();
+  if (isAuthenticated) {
+    return (
+      <DashboardLayout>
+        <ActsExplorerPage />
+      </DashboardLayout>
+    );
+  }
+  return (
+    <PublicLayout>
+      <ActsExplorerPage />
+    </PublicLayout>
+  );
+}
+
 function App() {
   const { loading } = useAuth();
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-50">
-        <LoadingSpinner size="lg" message="Initializing Lexguard..." />
+      <div className="flex items-center justify-center min-h-screen bg-slate-950">
+        <LoadingSpinner size="lg" message="Initializing Lexguard Judicial Repository..." />
       </div>
     );
   }
 
   return (
     <Routes>
-      {/* Root redirect */}
-      <Route path="/" element={<HomePage />} />
+      {/* Public landing page with e-Courts service grid */}
+      <Route path="/" element={<LandingPage />} />
 
       {/* Public routes (no auth required) */}
       <Route element={<PublicLayout />}>
@@ -70,6 +72,9 @@ function App() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/unauthorized" element={<UnauthorizedPage />} />
       </Route>
+
+      {/* Adaptive statutory explorer (renders DashboardLayout if authenticated, PublicLayout if visitor) */}
+      <Route path="/acts" element={<ActsRouteWrapper />} />
 
       {/* Public search (accessible to all, including unauthenticated) */}
       <Route path="/search/public" element={
@@ -103,6 +108,9 @@ function App() {
         {/* Case viewer — all authenticated roles */}
         <Route path="/cases/:caseId" element={<CaseViewerPage />} />
 
+        {/* User Profile — all authenticated roles */}
+        <Route path="/profile" element={<ProfilePage />} />
+
         {/* Bookmarks — advocate, scholar, staff */}
         <Route path="/bookmarks" element={
           <ProtectedRoute allowedRoles={['senior_staff', 'junior_staff', 'court_staff', 'staff', 'advocate', 'scholar']}>
@@ -110,14 +118,19 @@ function App() {
           </ProtectedRoute>
         } />
 
-        {/* Draft Assistant — advocate only */}
-        <Route path="/drafts" element={
-          <ProtectedRoute allowedRoles={['advocate', 'senior_staff', 'staff']}>
-            <DraftAssistantPage />
+        {/* Court Staff Moderation & Audit routes */}
+        <Route path="/review/:caseId" element={
+          <ProtectedRoute allowedRoles={['senior_staff', 'junior_staff', 'court_staff', 'staff']}>
+            <CaseReviewPage />
           </ProtectedRoute>
         } />
 
-        {/* Staff routes */}
+        <Route path="/admin/audit" element={
+          <ProtectedRoute allowedRoles={['senior_staff', 'court_staff', 'staff']}>
+            <AuditLedgerPage />
+          </ProtectedRoute>
+        } />
+
         <Route path="/dashboard" element={
           <ProtectedRoute allowedRoles={['senior_staff', 'junior_staff', 'court_staff', 'staff']}>
             <AdminDashboardPage />
@@ -129,6 +142,9 @@ function App() {
             <CaseUploadPage />
           </ProtectedRoute>
         } />
+
+        {/* Legacy redirect for approval queue */}
+        <Route path="/approval-queue" element={<Navigate to="/dashboard?tab=queue" replace />} />
       </Route>
 
       {/* Catch-all — redirect to home */}

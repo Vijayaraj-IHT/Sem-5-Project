@@ -23,10 +23,17 @@ export async function getPublishedPrecedents(query = '') {
   return response.data;
 }
 
+export async function compareMultiCases(payload) {
+  const response = await client.post('/comparison/compare-multi', payload);
+  return response.data;
+}
+
 export const comparisonApi = {
   compareCase,
   compareCases,
+  compareMultiCases,
   getPublishedPrecedents,
 };
 
 export default comparisonApi;
+

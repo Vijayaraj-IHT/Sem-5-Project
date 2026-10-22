@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Upload,
   FileText,
@@ -16,7 +17,7 @@ import {
   ChevronRight,
   Info,
 } from 'lucide-react';
-import { uploadCaseAuto } from '../../api/cases';
+import { uploadCaseAuto, updateCase } from '../../api/cases';
 
 /**
  * AutoExtractReview Component.
@@ -169,11 +170,47 @@ export default function AutoExtractReview({ onExtractionComplete }) {
     }));
   };
 
+  const [isSubmittingEdits, setIsSubmittingEdits] = useState(false);
+
   const handleConfirmAndSubmit = async () => {
-    // In Week 2, confirm transition or forward to case view
-    setStage('submitted');
-    if (onExtractionComplete) {
-      onExtractionComplete(formData);
+    setIsSubmittingEdits(true);
+    try {
+      if (formData.case_id) {
+        await updateCase(formData.case_id, {
+          title: formData.title,
+          court: formData.court,
+          bench: formData.bench,
+          year: parseInt(formData.year, 10) || undefined,
+          case_no: formData.case_no,
+          judge: formData.judge,
+          parties: formData.parties,
+          petitioner: formData.petitioner,
+          respondent: formData.respondent,
+          counsel_petitioner: formData.counsel_petitioner,
+          counsel_respondent: formData.counsel_respondent,
+          petition_type: formData.petition_type,
+          prayer: formData.prayer,
+          act_tags: formData.act_tags,
+          section_tags: formData.section_tags,
+          keyword_tags: formData.keyword_tags,
+          summary: formData.summary,
+          ratio_decidendi: formData.ratio_decidendi,
+          outcome: formData.outcome,
+        });
+      }
+      setStage('submitted');
+      if (onExtractionComplete) {
+        onExtractionComplete(formData);
+      }
+    } catch (err) {
+      console.error('Failed to persist review corrections:', err);
+      // Still allow proceeding to submitted state or alert
+      setStage('submitted');
+      if (onExtractionComplete) {
+        onExtractionComplete(formData);
+      }
+    } finally {
+      setIsSubmittingEdits(false);
     }
   };
 
@@ -536,11 +573,16 @@ export default function AutoExtractReview({ onExtractionComplete }) {
 
               <button
                 type="button"
+                disabled={isSubmittingEdits}
                 onClick={handleConfirmAndSubmit}
-                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold bg-amber-400 hover:bg-amber-300 text-slate-950 transition-colors shadow-md cursor-pointer"
+                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 transition-colors shadow-md cursor-pointer"
               >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Confirm & Submit for Senior Staff Approval</span>
+                {isSubmittingEdits ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="w-4 h-4" />
+                )}
+                <span>{isSubmittingEdits ? 'Saving & Queuing...' : 'Confirm & Submit for Senior Staff Approval'}</span>
               </button>
             </div>
           </div>
@@ -557,24 +599,41 @@ export default function AutoExtractReview({ onExtractionComplete }) {
             Case Registered & Queued for Approval!
           </h3>
           <p className="text-sm text-slate-400 max-w-md mx-auto">
-            {formData.case_no} has been validated and queued for senior staff approval. The cryptographic SHA-256 seal and AI metadata are recorded.
+            {formData.case_no || 'Document'} has been validated and queued for senior staff approval. The cryptographic SHA-256 seal and AI metadata are recorded.
           </p>
-          <div className="pt-4 flex items-center justify-center gap-3">
+          <div className="pt-4 flex flex-wrap items-center justify-center gap-3">
             <button
               type="button"
               onClick={handleReset}
-              className="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200"
+              className="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors cursor-pointer"
             >
               Upload Another Judgment
             </button>
             {formData.case_id && (
-              <a
-                href={`/cases/${formData.case_id}`}
-                className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-bold bg-amber-400 text-slate-950 hover:bg-amber-300"
+              <Link
+                to={`/review/${formData.case_id}`}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition-colors"
+                title="Launch 50/50 Split-Screen Review Workstation"
+              >
+                <Scale className="w-4 h-4" />
+                <span>Split-Screen Review</span>
+              </Link>
+            )}
+            <Link
+              to="/dashboard?tab=queue"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 transition-colors"
+            >
+              <span>View in Approval Queue</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </Link>
+            {formData.case_id && (
+              <Link
+                to={`/cases/${formData.case_id}`}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-amber-400 text-slate-950 hover:bg-amber-300 transition-colors"
               >
                 <span>View Case Record</span>
                 <ArrowRight className="w-4 h-4" />
-              </a>
+              </Link>
             )}
           </div>
         </div>

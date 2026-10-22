@@ -26,6 +26,7 @@ from app.schemas.case import (
     CaseResponse,
     CaseDetailResponse,
     CaseVerificationResponse,
+    CaseMetadataUpdate,
 )
 from app.services.crypto_service import compute_sha256, verify_sha256
 from app.services.audit_service import log_audit_event
@@ -402,6 +403,156 @@ def get_case(
     )
 
     return case
+
+
+@router.patch("/{case_id}", response_model=CaseResponse)
+def update_case_metadata(
+    case_id: str,
+    update_data: CaseMetadataUpdate,
+    request: Request,
+    current_user: User = Depends(require_role(["court_staff", "senior_staff", "staff"])),
+    db: Session = Depends(get_db),
+):
+    """
+    Allows court staff and reviewers to update extracted case metadata fields
+    during split-screen human-in-the-loop audit prior to judicial seal approval.
+    """
+    case = db.query(Case).filter(Case.id == case_id).first()
+    if not case:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Case record not found.",
+        )
+
+    update_dict = update_data.model_dump(exclude_unset=True)
+    changed_fields = []
+
+    for field, val in update_dict.items():
+        if hasattr(case, field) and val is not None:
+            setattr(case, field, val)
+            changed_fields.append(field)
+
+    # Re-generate embeddings if substantive legal fields changed
+    if any(f in changed_fields for f in ["title", "summary", "act_tags", "section_tags", "ratio_decidendi"]):
+        text_corpus = f"{case.title}. {case.summary or ''}. {' '.join(case.act_tags or [])} {' '.join(case.section_tags or [])}"
+        try:
+            from app.services.ai_api_service import ai_api_service
+            vecs = ai_api_service.generate_embeddings([text_corpus])
+            if vecs and len(vecs) > 0:
+                case.embedding = vecs[0]
+        except Exception:
+            case.embedding = embedding_service.generate_embedding(text_corpus)
+
+    case.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(case)
+
+    # Immutable Audit Log
+    log_audit_event(
+        db=db,
+        action="UPDATE_METADATA",
+        user_id=current_user.id,
+        case_id=case.id,
+        details=f"Court staff updated metadata fields: {', '.join(changed_fields)}",
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+
+    return case
+
+
+@router.post("/{case_id}/re-extract")
+def re_extract_case(
+    case_id: str,
+    request: Request,
+    current_user: User = Depends(require_role(["court_staff", "senior_staff", "staff"])),
+    db: Session = Depends(get_db),
+):
+    """
+    Triggers re-extraction on the official court document using the latest
+    Madras High Court extraction engine passes.
+    """
+    case = db.query(Case).filter(Case.id == case_id).first()
+    if not case:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Case record not found.",
+        )
+    if not os.path.exists(case.file_path):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Original court PDF file is missing on storage.",
+        )
+
+    from app.services.extraction_service import ExtractionService
+    try:
+        extracted = ExtractionService.extract_from_pdf(case.file_path, extract_passes=[1, 2, 3])
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Extraction failed: {str(e)}",
+        )
+
+    # Update case fields with fresh extraction
+    if extracted.get("case_no") and extracted["case_no"] != "Case No. Not Extracted":
+        case.case_no = extracted["case_no"][:100]
+    if extracted.get("title"):
+        case.title = extracted["title"][:300]
+    if extracted.get("court"):
+        case.court = extracted["court"][:150]
+    if extracted.get("year"):
+        case.year = extracted["year"]
+    if extracted.get("judge"):
+        case.judge = extracted["judge"]
+    if extracted.get("parties"):
+        case.parties = extracted["parties"]
+    if extracted.get("act_tags"):
+        case.act_tags = extracted["act_tags"]
+    if extracted.get("section_tags"):
+        case.section_tags = extracted["section_tags"]
+    if extracted.get("keyword_tags"):
+        case.keyword_tags = extracted["keyword_tags"]
+    if extracted.get("summary"):
+        case.summary = extracted["summary"]
+    if extracted.get("outcome"):
+        case.outcome = extracted["outcome"]
+    if extracted.get("disposition"):
+        case.disposition = extracted["disposition"]
+    if extracted.get("ratio_decidendi"):
+        case.ratio_decidendi = extracted["ratio_decidendi"]
+    if extracted.get("prayer"):
+        case.facts = extracted["prayer"]
+    if extracted.get("full_text"):
+        case.full_text = extracted["full_text"]
+    if extracted.get("page_count"):
+        case.page_count = extracted["page_count"]
+    if extracted.get("source_url"):
+        case.source_url = extracted["source_url"]
+
+    case.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(case)
+
+    # Log immutable audit event
+    log_audit_event(
+        db=db,
+        action="RE_EXTRACT",
+        user_id=current_user.id,
+        case_id=case.id,
+        details=f"Automated re-extraction executed for {case.case_no} (Confidence: {extracted.get('overall_confidence', 0.5)})",
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+
+    return {
+        "status": "success",
+        "case_id": case.id,
+        "case_no": case.case_no,
+        "extracted_data": extracted,
+        "confidence_scores": extracted.get("confidence_scores", {}),
+        "overall_confidence": extracted.get("overall_confidence", 0.5),
+        "message": "Re-extraction completed successfully.",
+    }
 
 
 @router.get("/{case_id}/view", response_model=CaseDetailResponse)
