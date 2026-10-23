@@ -78,14 +78,33 @@ $(document).ready(function () {
       $verifyLink.attr('href', 'verify.html?hash=' + encodeURIComponent(c.file_hash || ''));
     })
     .fail(function (xhr) {
-      $headerTitle.text('Failed to load judgment');
+      const is404 = xhr.status === 404;
       let msg = 'Could not load judgment metadata.';
       if (xhr.responseJSON && xhr.responseJSON.detail) {
         msg = typeof xhr.responseJSON.detail === 'string'
           ? xhr.responseJSON.detail
           : JSON.stringify(xhr.responseJSON.detail);
       }
-      LG.toast(msg, 'danger');
+      
+      const safeId = LG.utils.escapeHtml(caseId || 'Unknown');
+      $('main.lg-main .container-fluid').html(`
+        <div class="card card-judicial text-center p-5 my-4 shadow-lg border-secondary border-opacity-30">
+          <div class="d-inline-flex align-items-center justify-content-center mb-3 mx-auto" style="width: 72px; height: 72px; border-radius: 20px; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.35);">
+            <i class="bi bi-file-earmark-x fs-1 text-warning"></i>
+          </div>
+          <div class="badge bg-warning text-dark px-3 py-1 mb-2 fw-semibold mx-auto" style="width: fit-content;">HTTP 404 · RECORD NOT FOUND</div>
+          <h2 class="h3 font-serif fw-bold text-light mb-2">Judicial Record Not Found</h2>
+          <p class="text-secondary max-w-lg mx-auto mb-4">
+            The requested judicial precedent docket (<code class="text-warning font-monospace">${safeId}</code>) could not be located in the repository. ${LG.utils.escapeHtml(msg)}
+          </p>
+          <div class="d-flex justify-content-center flex-wrap gap-3">
+            <a href="search.html" class="btn btn-gold"><i class="bi bi-search me-1"></i>Return to Precedent Search</a>
+            <a href="acts-explorer.html" class="btn btn-judicial-outline"><i class="bi bi-book-half me-1"></i>Statutory Explorer</a>
+            <a href="admin.html?auth_role=staff" class="btn btn-judicial-outline"><i class="bi bi-speedometer2 me-1"></i>Staff Workstation</a>
+          </div>
+        </div>
+      `);
+      LG.toast(is404 ? 'Case record not found (HTTP 404).' : msg, 'warning');
     });
 
   /**
@@ -132,7 +151,7 @@ $(document).ready(function () {
     const kws = c.keyword_tags || [];
     const all = acts.concat(sections);
     if (all.length > 0) {
-      $overviewTags.html(all.map(t => `<span class="badge bg-dark text-secondary border border-secondary border-opacity-25">${LG.utils.escapeHtml(t)}</span>`).join(' '));
+      $overviewTags.html(all.map(t => `<span class="badge bg-light text-danger border border-danger border-opacity-25">${LG.utils.escapeHtml(t)}</span>`).join(' '));
     }
 
     // Populate Keyword Entity Chips for in-document search
@@ -141,7 +160,7 @@ $(document).ready(function () {
     $chipsContainer.empty();
     if (allChips.length > 0) {
       allChips.slice(0, 10).forEach(function (tag) {
-        const chip = $(`<button type="button" class="btn btn-xs btn-outline-secondary text-light py-0 px-2 rounded-pill" style="font-size: 0.72rem;">${LG.utils.escapeHtml(tag)}</button>`);
+        const chip = $(`<button type="button" class="btn btn-xs btn-outline-danger py-0 px-2 rounded-pill" style="font-size: 0.72rem; font-weight: 600; background: #ffffff;">${LG.utils.escapeHtml(tag)}</button>`);
         chip.on('click', function () {
           $('#doc-keyword-input').val(tag);
           executeDocKeywordSearch(tag);

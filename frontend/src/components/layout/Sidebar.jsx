@@ -91,13 +91,13 @@ const Sidebar = () => {
 
   return (
     <aside
-      className="w-64 bg-slate-800 border-r border-slate-700/80 fixed left-0 top-16 bottom-0 z-40 flex flex-col justify-between overflow-y-auto select-none"
+      className="w-64 bg-white border-r border-rose-900/15 fixed left-0 top-16 bottom-0 z-40 flex flex-col justify-between overflow-y-auto select-none shadow-xs"
       aria-label="Dashboard Navigation Sidebar"
     >
       {/* Top section: role header and navigation */}
       <div className="py-5">
         <div className="px-5 mb-4">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-red-800">
             Navigation Menu
           </span>
         </div>
@@ -112,8 +112,8 @@ const Sidebar = () => {
                 className={({ isActive }) =>
                   `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                     isActive
-                      ? 'bg-amber-500/10 text-amber-400 font-semibold border-l-4 border-amber-500'
-                      : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+                      ? 'bg-red-50 text-red-800 font-bold border-l-4 border-red-700 shadow-xs'
+                      : 'text-slate-700 hover:text-red-800 hover:bg-red-50/50'
                   }`
                 }
               >
@@ -126,9 +126,9 @@ const Sidebar = () => {
       </div>
 
       {/* Footer System Status Badge */}
-      <div className="p-4 border-t border-slate-700/60 text-xs text-slate-400 font-mono">
-        <div className="flex items-center gap-2 text-emerald-400 mb-1">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+      <div className="p-4 border-t border-rose-900/10 text-xs text-slate-600 font-mono bg-red-50/30">
+        <div className="flex items-center gap-2 text-emerald-700 font-semibold mb-1">
+          <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
           <span>CIS v3.2 Ledger Online</span>
         </div>
         <div className="text-[10px] text-slate-500">

@@ -1,25 +1,64 @@
 @import "tailwindcss";
 
+/* ==============================================================================
+   LexGuard — Courtroom Red & White Light Theme (React SPA)
+   High Court of Judicature at Madras & Supreme Court Official Palette
+   ============================================================================== */
+
+:root {
+  color-scheme: light;
+  --court-red: #991b1b;
+  --court-red-dark: #7f1d1d;
+  --court-red-light: #b91c1c;
+  --court-red-subtle: #fef2f2;
+}
+
+body {
+  background-color: #f8fafc;
+  color: #0f172a;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  margin: 0;
+  padding: 0;
+}
+
+/* Light Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(185, 28, 28, 0.25);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(185, 28, 28, 0.45);
+}
+
 /* Custom scrollbar for legal document viewers */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: #1e293b;
+  background: #f8fafc;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #475569;
+  background: rgba(185, 28, 28, 0.25);
   border-radius: 3px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
+  background: rgba(185, 28, 28, 0.45);
 }
 
-/* Legal document text styling */
+/* Legal document text styling in crisp black-on-white */
 .legal-text {
   font-family: 'Georgia', 'Times New Roman', serif;
-  line-height: 1.8;
+  line-height: 1.85;
   letter-spacing: 0.01em;
+  color: #0f172a;
 }
 
 /* Hash display monospace */
@@ -27,6 +66,11 @@
   font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
   font-size: 0.75rem;
   word-break: break-all;
+  background-color: #fef2f2;
+  color: #991b1b;
+  padding: 0.15rem 0.35rem;
+  border-radius: 4px;
+  border: 1px solid rgba(185, 28, 28, 0.15);
 }
 
 /* Pulse animation for integrity badges */
@@ -41,5 +85,135 @@
 /* Split pane resize handle */
 .resize-handle {
   cursor: col-resize;
-  background: linear-gradient(to right, transparent 40%, #475569 40%, #475569 60%, transparent 60%);
+  background: linear-gradient(to right, transparent 40%, rgba(185, 28, 28, 0.25) 40%, rgba(185, 28, 28, 0.25) 60%, transparent 60%);
+}
+
+/* ==============================================================================
+   Universal Theme Adaptation: Mapping Dark Tailwind Classes to Court Red & White
+   ============================================================================== */
+
+/* Base surfaces */
+.bg-slate-950,
+.bg-slate-900 {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+.bg-slate-800,
+.bg-slate-850 {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: rgba(185, 28, 28, 0.12) !important;
+  box-shadow: 0 2px 12px rgba(153, 27, 27, 0.04) !important;
+}
+
+.bg-slate-700 {
+  background-color: #fef2f2 !important;
+  color: #7f1d1d !important;
+}
+
+/* Borders in Court Rose & Grey */
+.border-slate-800,
+.border-slate-700,
+.border-slate-700\/80,
+.border-slate-700\/60,
+.border-slate-800\/80 {
+  border-color: rgba(185, 28, 28, 0.14) !important;
+}
+
+/* Typography High-Contrast */
+.text-white,
+.text-slate-100,
+.text-slate-200 {
+  color: #0f172a !important;
+}
+
+.text-slate-300,
+.text-slate-400 {
+  color: #334155 !important;
+}
+
+.text-slate-500,
+.text-slate-600 {
+  color: #475569 !important;
+}
+
+/* Accents: Court Crimson / Red */
+.text-amber-400,
+.text-amber-500 {
+  color: #991b1b !important;
+}
+
+.bg-amber-500,
+.bg-amber-600,
+.bg-amber-400 {
+  background-color: #991b1b !important;
+  color: #ffffff !important;
+}
+
+.bg-amber-500:hover,
+.bg-amber-600:hover,
+.bg-amber-400:hover {
+  background-color: #7f1d1d !important;
+  color: #ffffff !important;
+}
+
+.border-amber-500,
+.border-amber-400,
+.border-amber-500\/30,
+.border-amber-500\/50,
+.border-amber-500\/40 {
+  border-color: rgba(185, 28, 28, 0.3) !important;
+}
+
+.bg-amber-500\/10,
+.bg-amber-500\/15,
+.bg-amber-500\/20,
+.bg-amber-500\/30 {
+  background-color: #fef2f2 !important;
+  color: #991b1b !important;
+  border-color: rgba(185, 28, 28, 0.2) !important;
+}
+
+/* Form Inputs, Selects & Buttons */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="search"],
+select,
+textarea {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #991b1b !important;
+  box-shadow: 0 0 0 3px rgba(185, 28, 28, 0.15) !important;
+}
+
+/* Table light styling */
+table {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+thead,
+th {
+  background-color: #fef2f2 !important;
+  color: #7f1d1d !important;
+  font-weight: 700 !important;
+  border-bottom: 2px solid rgba(185, 28, 28, 0.18) !important;
+}
+
+td {
+  background-color: #ffffff !important;
+  color: #1e293b !important;
+  border-bottom: 1px solid rgba(185, 28, 28, 0.08) !important;
+}
+
+tbody tr:hover td {
+  background-color: #fff1f2 !important;
 }

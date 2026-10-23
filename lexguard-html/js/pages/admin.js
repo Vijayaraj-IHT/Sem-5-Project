@@ -74,8 +74,8 @@ $(document).ready(function () {
         labels: ['Sealed & Published', 'Pending Review', 'Quarantined'],
         datasets: [{
           data: [cases.published || 0, cases.pending_approval || 0, cases.quarantined || 0],
-          backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
-          borderColor: '#111827',
+          backgroundColor: ['#059669', '#d97706', '#991b1b'],
+          borderColor: '#ffffff',
           borderWidth: 2
         }]
       },
@@ -85,7 +85,7 @@ $(document).ready(function () {
         plugins: {
           legend: {
             position: 'bottom',
-            labels: { color: '#cbd5e1', font: { family: 'Inter', size: 12 } }
+            labels: { color: '#0f172a', font: { family: 'Inter', size: 12, weight: '600' } }
           }
         }
       }
@@ -111,7 +111,7 @@ $(document).ready(function () {
         datasets: [{
           label: 'Registered Accounts',
           data: data.length > 0 ? data : [2, 12, 6, 24],
-          backgroundColor: '#818cf8',
+          backgroundColor: '#991b1b',
           borderRadius: 6
         }]
       },
@@ -121,11 +121,11 @@ $(document).ready(function () {
         scales: {
           y: {
             beginAtZero: true,
-            ticks: { color: '#94a3b8' },
-            grid: { color: 'rgba(148, 163, 184, 0.1)' }
+            ticks: { color: '#475569' },
+            grid: { color: 'rgba(185, 28, 28, 0.08)' }
           },
           x: {
-            ticks: { color: '#cbd5e1' },
+            ticks: { color: '#0f172a', font: { weight: '600' } },
             grid: { display: false }
           }
         },

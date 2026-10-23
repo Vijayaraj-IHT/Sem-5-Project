@@ -116,19 +116,19 @@ const Navbar = () => {
   const linkClass = ({ isActive }) =>
     `inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
       isActive
-        ? 'text-amber-400 bg-slate-800/80 shadow-xs'
-        : 'text-slate-300 hover:text-white hover:bg-slate-800/50'
+        ? 'text-red-800 bg-red-50 shadow-xs font-bold border-b-2 border-red-700'
+        : 'text-slate-700 hover:text-red-800 hover:bg-red-50/60'
     }`;
 
   const mobileLinkClass = ({ isActive }) =>
     `flex items-center gap-2 px-3 py-2.5 rounded-lg text-base font-medium transition-colors ${
       isActive
-        ? 'text-amber-400 bg-slate-800'
-        : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+        ? 'text-red-800 bg-red-50 font-bold border-l-4 border-red-700'
+        : 'text-slate-700 hover:text-red-800 hover:bg-red-50/60'
     }`;
 
   return (
-    <header className="fixed top-0 left-0 right-0 h-16 bg-slate-900 border-b border-slate-700 z-50">
+    <header className="fixed top-0 left-0 right-0 h-16 bg-white/95 backdrop-blur-md border-b border-rose-900/15 shadow-xs z-50">
       <div className="max-w-7xl mx-auto h-full px-4 sm:px-6 lg:px-8 flex items-center justify-between">
         {/* Brand / Logo */}
         <div className="flex items-center gap-8">
@@ -136,14 +136,14 @@ const Navbar = () => {
             to="/"
             className="flex items-center gap-2.5 group focus:outline-hidden"
           >
-            <div className="w-10 h-10 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-amber-400 group-hover:border-amber-400/50 transition-colors shadow-inner">
+            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-red-800 to-rose-700 border border-red-900 flex items-center justify-center text-white shadow-md group-hover:scale-105 transition-all">
               <Scale className="w-6 h-6" />
             </div>
             <div className="flex flex-col">
-              <span className="text-xl font-bold tracking-tight text-white flex items-center gap-1 font-serif">
-                LEX<span className="text-amber-400">GUARD</span>
+              <span className="text-xl font-bold tracking-tight text-slate-900 flex items-center gap-1 font-serif">
+                LEX<span className="text-red-700">GUARD</span>
               </span>
-              <span className="text-[10px] tracking-widest text-slate-400 uppercase -mt-1 font-mono">
+              <span className="text-[10px] tracking-widest text-slate-500 uppercase -mt-1 font-mono">
                 Judicial Research
               </span>
             </div>
@@ -166,15 +166,15 @@ const Navbar = () => {
               <button
                 type="button"
                 onClick={() => setUserDropdownOpen((prev) => !prev)}
-                className="flex items-center gap-2.5 p-1.5 rounded-lg hover:bg-slate-800 transition-colors border border-transparent hover:border-slate-700 text-left focus:outline-hidden focus:ring-2 focus:ring-amber-400"
+                className="flex items-center gap-2.5 p-1.5 rounded-lg hover:bg-red-50/60 transition-colors border border-transparent hover:border-rose-200 text-left focus:outline-hidden focus:ring-2 focus:ring-red-700"
                 aria-expanded={userDropdownOpen}
                 aria-haspopup="true"
               >
-                <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-amber-600 to-amber-400 text-slate-950 font-bold text-sm flex items-center justify-center shadow-xs">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-red-800 to-rose-600 text-white font-bold text-sm flex items-center justify-center shadow-xs">
                   {userInitial}
                 </div>
                 <div className="hidden sm:flex flex-col">
-                  <span className="text-sm font-semibold text-white leading-tight max-w-[140px] truncate">
+                  <span className="text-sm font-semibold text-slate-900 leading-tight max-w-[140px] truncate">
                     {user?.name || 'User'}
                   </span>
                   <div className="mt-0.5">
@@ -182,20 +182,20 @@ const Navbar = () => {
                   </div>
                 </div>
                 <ChevronDown
-                  className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${
-                    userDropdownOpen ? 'rotate-180 text-amber-400' : ''
+                  className={`w-4 h-4 text-slate-500 transition-transform duration-200 ${
+                    userDropdownOpen ? 'rotate-180 text-red-700' : ''
                   }`}
                 />
               </button>
 
               {/* Dropdown Menu */}
               {userDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-64 bg-slate-800 border border-slate-700 rounded-lg shadow-xl py-2 z-50 text-slate-200 divide-y divide-slate-700">
+                <div className="absolute right-0 mt-2 w-64 bg-white border border-rose-900/15 rounded-lg shadow-xl py-2 z-50 text-slate-800 divide-y divide-rose-100">
                   <div className="px-4 py-3">
-                    <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Signed in as</p>
-                    <p className="text-sm font-medium text-white truncate mt-0.5">{user?.name}</p>
+                    <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Signed in as</p>
+                    <p className="text-sm font-bold text-slate-900 truncate mt-0.5">{user?.name}</p>
                     {user?.email && (
-                      <p className="text-xs text-slate-400 truncate">{user.email}</p>
+                      <p className="text-xs text-slate-500 truncate">{user.email}</p>
                     )}
                     <div className="mt-2">
                       <RoleBadge role={currentRole} showDot={true} />
@@ -206,9 +206,9 @@ const Navbar = () => {
                     <Link
                       to="/profile"
                       onClick={() => setUserDropdownOpen(false)}
-                      className="flex items-center gap-2.5 px-4 py-2 text-sm text-slate-200 hover:bg-slate-700 hover:text-white transition-colors"
+                      className="flex items-center gap-2.5 px-4 py-2 text-sm text-slate-700 hover:bg-red-50 hover:text-red-800 transition-colors"
                     >
-                      <UserIcon className="w-4 h-4 text-slate-400" />
+                      <UserIcon className="w-4 h-4 text-slate-500" />
                       Account Profile
                     </Link>
                   </div>
@@ -217,9 +217,9 @@ const Navbar = () => {
                     <button
                       type="button"
                       onClick={handleLogout}
-                      className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-rose-300 hover:bg-rose-500/10 hover:text-rose-200 transition-colors text-left"
+                      className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-red-700 hover:bg-red-50 hover:text-red-900 transition-colors text-left font-medium"
                     >
-                      <LogOut className="w-4 h-4 text-rose-400" />
+                      <LogOut className="w-4 h-4 text-red-700" />
                       Sign Out
                     </button>
                   </div>
@@ -230,13 +230,13 @@ const Navbar = () => {
             <div className="flex items-center gap-2">
               <Link
                 to="/login"
-                className="px-3.5 py-1.5 text-sm font-medium text-slate-300 hover:text-white rounded-md hover:bg-slate-800 transition-colors"
+                className="px-3.5 py-1.5 text-sm font-medium text-slate-700 hover:text-red-800 rounded-md hover:bg-red-50 transition-colors"
               >
                 Sign In
               </Link>
               <Link
                 to="/register"
-                className="px-3.5 py-1.5 text-sm font-medium text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-md transition-colors shadow-xs font-semibold"
+                className="px-3.5 py-1.5 text-sm font-medium text-white bg-red-700 hover:bg-red-800 rounded-md transition-colors shadow-xs font-semibold"
               >
                 Register
               </Link>

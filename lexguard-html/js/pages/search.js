@@ -159,7 +159,7 @@ $(document).ready(function () {
       if (allTags.length > 0) {
         tagsHtml = `
           <div class="d-flex flex-wrap gap-1 mb-3">
-            ${allTags.map(t => `<span class="badge bg-dark text-secondary border border-secondary border-opacity-25">${LG.utils.escapeHtml(t)}</span>`).join('')}
+            ${allTags.map(t => `<span class="badge bg-light text-danger border border-danger border-opacity-25">${LG.utils.escapeHtml(t)}</span>`).join('')}
           </div>
         `;
       }
@@ -206,7 +206,7 @@ $(document).ready(function () {
                 <i class="bi bi-quote me-1"></i>Copy Citation
               </button>
               <button type="button" class="btn btn-sm btn-judicial-outline bookmark-btn" data-id="${encodeURIComponent(item.id)}" title="Save to Research Bookmarks">
-                <i class="bi bi-bookmark text-warning"></i>
+                <i class="bi bi-bookmark text-danger"></i>
               </button>
             </div>
           </div>

@@ -12,19 +12,19 @@ const CURRENT_YEAR = new Date().getFullYear();
  */
 const PublicLayout = ({ children }) => {
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
       {/* Top Header / Nav */}
-      <header className="h-16 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
+      <header className="h-16 border-b border-rose-900/15 bg-white/95 backdrop-blur-md sticky top-0 z-50 shadow-xs">
         <div className="max-w-7xl mx-auto h-full px-4 sm:px-6 lg:px-8 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5 group">
-            <div className="w-10 h-10 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-amber-400 group-hover:border-amber-400/50 transition-colors shadow-inner">
+            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-red-800 to-rose-700 border border-red-900 flex items-center justify-center text-white shadow-md group-hover:scale-105 transition-all">
               <Scale className="w-6 h-6" />
             </div>
             <div className="flex flex-col">
-              <span className="text-xl font-bold tracking-tight text-white flex items-center gap-1 font-serif">
-                LEX<span className="text-amber-400">GUARD</span>
+              <span className="text-xl font-bold tracking-tight text-slate-900 flex items-center gap-1 font-serif">
+                LEX<span className="text-red-700">GUARD</span>
               </span>
-              <span className="text-[10px] tracking-widest text-slate-400 uppercase -mt-1 font-mono">
+              <span className="text-[10px] tracking-widest text-slate-500 uppercase -mt-1 font-mono">
                 Judicial Research
               </span>
             </div>
@@ -33,25 +33,25 @@ const PublicLayout = ({ children }) => {
           <nav className="flex items-center gap-3" aria-label="Public Actions">
             <Link
               to="/verify/public"
-              className="px-3.5 py-1.5 text-sm font-medium text-slate-300 hover:text-white rounded-md hover:bg-slate-800 transition-colors"
+              className="px-3.5 py-1.5 text-sm font-medium text-slate-700 hover:text-red-800 rounded-md hover:bg-red-50 transition-colors"
             >
               Verify Document
             </Link>
             <Link
               to="/search/public"
-              className="px-3.5 py-1.5 text-sm font-medium text-slate-300 hover:text-white rounded-md hover:bg-slate-800 transition-colors"
+              className="px-3.5 py-1.5 text-sm font-medium text-slate-700 hover:text-red-800 rounded-md hover:bg-red-50 transition-colors"
             >
               Public Search
             </Link>
             <Link
               to="/login"
-              className="px-3.5 py-1.5 text-sm font-medium text-slate-300 hover:text-white rounded-md hover:bg-slate-800 transition-colors"
+              className="px-3.5 py-1.5 text-sm font-medium text-slate-700 hover:text-red-800 rounded-md hover:bg-red-50 transition-colors"
             >
               Sign In
             </Link>
             <Link
               to="/register"
-              className="px-4 py-1.5 text-sm font-semibold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-md transition-colors shadow-xs"
+              className="px-4 py-1.5 text-sm font-semibold text-white bg-red-700 hover:bg-red-800 rounded-md transition-colors shadow-xs"
             >
               Register
             </Link>

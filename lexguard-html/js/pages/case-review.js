@@ -90,8 +90,26 @@ $(document).ready(function () {
 
         loadPdf();
       })
-      .fail(function () {
-        LG.toast('Failed to load case record for review.', 'danger');
+      .fail(function (xhr) {
+        const is404 = xhr.status === 404;
+        const safeId = LG.utils.escapeHtml(caseId || 'Unknown');
+        $('main.lg-main .container-fluid').html(`
+          <div class="card card-judicial text-center p-5 my-4 shadow-lg border-secondary border-opacity-30">
+            <div class="d-inline-flex align-items-center justify-content-center mb-3 mx-auto" style="width: 72px; height: 72px; border-radius: 20px; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.35);">
+              <i class="bi bi-file-earmark-x fs-1 text-warning"></i>
+            </div>
+            <div class="badge bg-warning text-dark px-3 py-1 mb-2 fw-semibold mx-auto" style="width: fit-content;">HTTP 404 · DOCKET NOT FOUND</div>
+            <h2 class="h3 font-serif fw-bold text-light mb-2">Case Ingestion Record Not Found</h2>
+            <p class="text-secondary max-w-lg mx-auto mb-4">
+              No pending or registered case record found matching identifier <code class="text-warning font-monospace">${safeId}</code>. It may have already been sealed, transferred, or rejected.
+            </p>
+            <div class="d-flex justify-content-center gap-3">
+              <a href="admin.html?auth_role=staff" class="btn btn-gold"><i class="bi bi-speedometer2 me-1"></i>Return to Staff Workstation</a>
+              <a href="case-upload.html" class="btn btn-judicial-outline"><i class="bi bi-cloud-arrow-up me-1"></i>Upload New PDF</a>
+            </div>
+          </div>
+        `);
+        LG.toast(is404 ? 'Docket not found for review (HTTP 404).' : 'Failed to load case record.', 'warning');
       });
   }
 

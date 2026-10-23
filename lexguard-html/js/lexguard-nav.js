@@ -118,6 +118,12 @@
                   <span>Saved Research</span>
                 </a>
               </li>
+              <li>
+                <a href="cause-list.html" class="lg-sidebar-link ${activePage === 'causelist' ? 'active' : ''}">
+                  <i class="bi bi-clock-history"></i>
+                  <span>Daily Cause List</span>
+                </a>
+              </li>
             </ul>
           </div>
 
@@ -147,7 +153,7 @@
                 <a href="screenshots-gallery.html" class="lg-sidebar-link ${activePage === 'gallery' ? 'active' : ''}">
                   <i class="bi bi-camera-fill text-warning"></i>
                   <span>Visual Showcase</span>
-                  <span class="badge bg-warning text-dark ms-auto">24</span>
+                  <span class="badge bg-warning text-dark ms-auto">30</span>
                 </a>
               </li>
             </ul>
@@ -214,16 +220,14 @@
       }
     });
 
-    // Theme toggle init
-    const currentTheme = localStorage.getItem('lg_theme') || 'dark';
-    document.documentElement.setAttribute('data-theme', currentTheme);
-    $('#theme-icon').attr('class', currentTheme === 'light' ? 'bi bi-sun-fill text-warning' : 'bi bi-moon-stars');
+    // Theme toggle init — Courtroom Red & White Light Theme
+    document.documentElement.setAttribute('data-theme', 'light');
+    document.documentElement.setAttribute('data-bs-theme', 'light');
+    localStorage.setItem('lg_theme', 'light');
+    $('#theme-icon').attr('class', 'bi bi-sun-fill text-danger');
 
     $('#theme-toggle').on('click', function () {
-      const active = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
-      document.documentElement.setAttribute('data-theme', active);
-      localStorage.setItem('lg_theme', active);
-      $('#theme-icon').attr('class', active === 'light' ? 'bi bi-sun-fill text-warning' : 'bi bi-moon-stars');
+      LG.toast('Courtroom Red & White judicial theme is active.', 'info');
     });
   };
 

@@ -25,6 +25,7 @@ import ActsExplorerPage from './pages/ActsExplorerPage';
 import CaseReviewPage from './pages/CaseReviewPage';
 import AuditLedgerPage from './pages/AuditLedgerPage';
 import ProfilePage from './pages/ProfilePage';
+import NotFoundPage from './pages/NotFoundPage';
 
 /**
  * App component — defines all application routes with role-based access control.
@@ -147,8 +148,8 @@ function App() {
         <Route path="/approval-queue" element={<Navigate to="/dashboard?tab=queue" replace />} />
       </Route>
 
-      {/* Catch-all — redirect to home */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+      {/* 404 Catch-all — User-friendly Not Found screen */}
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 }

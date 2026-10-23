@@ -1,8 +1,10 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light" data-bs-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="alternate icon" href="favicon.ico">
   <title>Public Cryptographic Verifier · LexGuard</title>
 
   <!-- Google Fonts & CDN CSS -->
@@ -62,7 +64,7 @@
             <span><i class="bi bi-cpu me-1 text-warning"></i>Computing Web Crypto SHA-256 Digest...</span>
             <span id="hashing-percent" class="fw-bold text-warning">0%</span>
           </div>
-          <div class="progress" style="height: 6px; background-color: #0c1019;">
+          <div class="progress" style="height: 6px; background-color: #f1f5f9;">
             <div id="hashing-bar" class="progress-bar bg-warning" role="progressbar" style="width: 0%;"></div>
           </div>
         </div>
@@ -95,7 +97,7 @@
       <div id="verification-result-box" class="d-none">
 
         <!-- Authentic Match Banner -->
-        <div id="result-authentic" class="card card-judicial p-4 mb-4 border-success border-opacity-50 shadow-lg d-none" style="background: linear-gradient(145deg, rgba(16, 185, 129, 0.08) 0%, #111827 100%);">
+        <div id="result-authentic" class="card card-judicial p-4 mb-4 border-success border-opacity-50 shadow-lg d-none" style="background: linear-gradient(145deg, rgba(16, 185, 129, 0.08) 0%, #ffffff 100%);">
           <div class="d-flex align-items-center gap-3 mb-3">
             <div class="rounded-circle bg-success bg-opacity-25 p-3 text-success d-inline-flex">
               <i class="bi bi-patch-check-fill fs-1"></i>
@@ -150,7 +152,7 @@
         </div>
 
         <!-- Unregistered / Tampered Banner -->
-        <div id="result-unregistered" class="card card-judicial p-4 mb-4 border-danger border-opacity-50 shadow-lg d-none" style="background: linear-gradient(145deg, rgba(239, 68, 68, 0.08) 0%, #111827 100%);">
+        <div id="result-unregistered" class="card card-judicial p-4 mb-4 border-danger border-opacity-50 shadow-lg d-none" style="background: linear-gradient(145deg, rgba(239, 68, 68, 0.08) 0%, #ffffff 100%);">
           <div class="d-flex align-items-center gap-3 mb-3">
             <div class="rounded-circle bg-danger bg-opacity-25 p-3 text-danger d-inline-flex">
               <i class="bi bi-shield-x fs-1"></i>

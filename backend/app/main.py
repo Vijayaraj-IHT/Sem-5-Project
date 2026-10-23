@@ -156,6 +156,56 @@ app.add_middleware(
 # 3. Mount API v1 Routers
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
+import os
+from fastapi.responses import FileResponse, JSONResponse, Response
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    """Serve official LexGuard judicial favicon without triggering 404 console logs."""
+    ico_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "storage", "favicon.ico")
+    if os.path.exists(ico_path):
+        return FileResponse(ico_path, media_type="image/x-icon")
+    return Response(status_code=204)
+
+
+@app.exception_handler(404)
+@app.exception_handler(StarletteHTTPException)
+async def custom_http_exception_handler(request: Request, exc: Exception):
+    """
+    Standardized, user-friendly 404 and HTTP error handler returning structured JSON
+    with helpful navigation suggestions instead of cryptic unhandled errors.
+    """
+    status_code = getattr(exc, "status_code", 404)
+    detail = getattr(exc, "detail", "Resource not found")
+    
+    if status_code == 404:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": "Not Found",
+                "status_code": 404,
+                "detail": detail if detail != "Not Found" else f"The requested resource at '{request.url.path}' was not found on this judicial repository server.",
+                "path": request.url.path,
+                "available_endpoints": {
+                    "health": "/health",
+                    "api_docs": f"{settings.API_V1_STR}/docs",
+                    "search_cases": f"{settings.API_V1_STR}/cases/search",
+                    "acts_catalog": f"{settings.API_V1_STR}/acts/all",
+                }
+            }
+        )
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "error": "HTTP Error",
+            "status_code": status_code,
+            "detail": detail,
+            "path": request.url.path,
+        }
+    )
+
 
 @app.get("/health", tags=["System Health"])
 def health_check():

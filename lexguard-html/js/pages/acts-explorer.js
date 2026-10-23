@@ -201,9 +201,9 @@ $(document).ready(function () {
             <div>
               <div class="d-flex align-items-center gap-2 mb-1">
                 <span class="badge ${act.badgeClass}">${act.category}</span>
-                ${act.newEquiv ? `<span class="badge bg-dark text-warning border border-warning border-opacity-30"><i class="bi bi-arrow-repeat me-1"></i>${act.newEquiv}</span>` : ''}
+                ${act.newEquiv ? `<span class="badge badge-court-red"><i class="bi bi-arrow-repeat me-1"></i>${act.newEquiv}</span>` : ''}
               </div>
-              <h2 class="h5 fw-bold text-light mb-1">${LG.utils.escapeHtml(act.name)}</h2>
+              <h2 class="h5 fw-bold text-dark mb-1">${LG.utils.escapeHtml(act.name)}</h2>
               <p class="text-secondary small mb-0">${LG.utils.escapeHtml(act.description)}</p>
             </div>
             <div>
@@ -219,12 +219,12 @@ $(document).ready(function () {
                 <div class="col-md-6">
                   <a href="search.html?q=${encodeURIComponent(s.query)}" class="lg-statute-section-item">
                     <div class="d-flex align-items-center justify-content-between mb-1">
-                      <span class="fw-bold text-warning font-mono">${LG.utils.escapeHtml(s.section)}</span>
-                      <span class="badge bg-dark text-secondary border border-secondary border-opacity-25 small">
+                      <span class="fw-bold text-danger font-mono">${LG.utils.escapeHtml(s.section)}</span>
+                      <span class="badge bg-light text-danger border border-danger border-opacity-25 small">
                         Explore Precedents <i class="bi bi-arrow-right ms-1"></i>
                       </span>
                     </div>
-                    <div class="fw-semibold text-light small mb-1">${LG.utils.escapeHtml(s.title)}</div>
+                    <div class="fw-bold text-dark small mb-1">${LG.utils.escapeHtml(s.title)}</div>
                     <div class="text-secondary small lh-sm" style="font-size: 0.8rem;">${LG.utils.escapeHtml(s.desc)}</div>
                   </a>
                 </div>
