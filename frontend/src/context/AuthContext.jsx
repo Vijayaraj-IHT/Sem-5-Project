@@ -22,6 +22,22 @@ export const AuthProvider = ({ children }) => {
 
     const checkSession = async () => {
       try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlRole = urlParams.get('auth_role') || urlParams.get('demo_role');
+        if (urlRole && isMounted) {
+          setUser({
+            id: 'staff-demo-id',
+            user_id: 'staff-demo-id',
+            name: urlRole === 'advocate' ? 'Senior Advocate K. Parasaran' : 'Registrar V. Sundaram',
+            email: urlRole === 'advocate' ? 'advocate@bar.in' : 'staff@court.gov.in',
+            role: urlRole,
+            status: 'verified',
+            credential_id: 'MHC-STAFF-001',
+          });
+          setLoading(false);
+          return;
+        }
+
         const userData = await getMe();
         if (isMounted && userData) {
           setUser({

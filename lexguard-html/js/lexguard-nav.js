@@ -143,6 +143,13 @@
                   <span>Case Ingestion</span>
                 </a>
               </li>
+              <li>
+                <a href="screenshots-gallery.html" class="lg-sidebar-link ${activePage === 'gallery' ? 'active' : ''}">
+                  <i class="bi bi-camera-fill text-warning"></i>
+                  <span>Visual Showcase</span>
+                  <span class="badge bg-warning text-dark ms-auto">24</span>
+                </a>
+              </li>
             </ul>
           </div>
 

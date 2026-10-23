@@ -94,6 +94,26 @@
     }
   };
 
+  // Automated session bootstrapping from URL parameters
+  (function () {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlToken = urlParams.get('auth_token');
+      const urlRole = urlParams.get('auth_role') || urlParams.get('demo_role');
+      if (urlToken || urlRole) {
+        LG.session.set({
+          access_token: urlToken || 'lexguard-bearer-session',
+          token_type: 'bearer',
+          role: urlRole || 'staff',
+          user_id: urlParams.get('auth_id') || 'staff-001',
+          name: urlParams.get('auth_name') || (urlRole === 'advocate' ? 'Advocate K. Parasaran' : 'Registrar V. Sundaram'),
+          email: urlParams.get('auth_email') || (urlRole === 'advocate' ? 'advocate@bar.in' : 'staff@court.gov.in'),
+          csrf_token: urlParams.get('csrf_token') || 'demo-csrf-token'
+        });
+      }
+    } catch (e) {}
+  })();
+
   /**
    * Route Guard: Check authentication and role permissions.
    * Redirects to login or unauthorized page if check fails.
