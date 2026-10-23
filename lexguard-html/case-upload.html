@@ -96,6 +96,81 @@
               </button>
             </form>
           </div>
+
+          <!-- Auto-Extract Review Workstation Card (Displayed after successful extraction) -->
+          <div class="card card-judicial p-4 mb-4 shadow border-warning border-opacity-30 d-none" id="auto-review-card">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3 pb-3 border-bottom border-secondary border-opacity-25">
+              <div>
+                <span class="badge bg-warning text-dark fw-bold mb-1"><i class="bi bi-cpu-fill me-1"></i>Automated Extraction Completed</span>
+                <h3 class="h5 fw-bold text-white mb-0" id="review-display-title">Extracted CIS Docket</h3>
+              </div>
+              <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-success fs-7" id="review-confidence-badge"><i class="bi bi-check-circle-fill me-1"></i>94% Confidence</span>
+                <span class="font-mono text-secondary small" id="review-sha-seal"></span>
+              </div>
+            </div>
+
+            <form id="auto-review-form">
+              <input type="hidden" id="review-case-id">
+              <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                  <label class="form-label text-secondary small fw-semibold">Case Registration Number</label>
+                  <input type="text" class="form-control" id="review-caseno" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label text-secondary small fw-semibold">Court / Jurisdiction</label>
+                  <select class="form-select" id="review-court">
+                    <option value="Madras High Court (Principal Seat, Chennai)">Madras High Court (Principal Seat, Chennai)</option>
+                    <option value="Madras High Court (Madurai Bench)">Madras High Court (Madurai Bench)</option>
+                    <option value="Supreme Court of India">Supreme Court of India</option>
+                  </select>
+                </div>
+                <div class="col-md-12">
+                  <label class="form-label text-secondary small fw-semibold">Case Title</label>
+                  <input type="text" class="form-control" id="review-title" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label text-secondary small fw-semibold">Bench / Coram Judge</label>
+                  <input type="text" class="form-control" id="review-judge">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label text-secondary small fw-semibold">Parties / Counsel</label>
+                  <input type="text" class="form-control" id="review-parties">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label text-secondary small fw-semibold">Acts Cited (comma separated)</label>
+                  <input type="text" class="form-control" id="review-acts" placeholder="Indian Penal Code, CrPC">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label text-secondary small fw-semibold">Sections (comma separated)</label>
+                  <input type="text" class="form-control" id="review-sections" placeholder="Section 302, Section 438">
+                </div>
+                <div class="col-12">
+                  <label class="form-label text-secondary small fw-semibold">Ratio Decidendi</label>
+                  <textarea class="form-control font-serif" id="review-ratio" rows="3"></textarea>
+                </div>
+                <div class="col-12">
+                  <label class="form-label text-secondary small fw-semibold">Summary &amp; Facts</label>
+                  <textarea class="form-control small" id="review-summary" rows="3"></textarea>
+                </div>
+              </div>
+
+              <!-- Moderation Action Buttons -->
+              <div class="d-flex align-items-center justify-content-between pt-3 border-top border-secondary border-opacity-25 flex-wrap gap-2">
+                <a href="#" class="btn btn-sm btn-judicial-outline" id="review-split-btn">
+                  <i class="bi bi-layout-split me-1"></i>Open Split-Screen Reviewer
+                </a>
+                <div class="d-flex align-items-center gap-2">
+                  <a href="#" class="btn btn-sm btn-outline-secondary" id="review-dossier-btn">
+                    <i class="bi bi-book-half me-1"></i>View Case Dossier
+                  </a>
+                  <button type="button" class="btn btn-sm btn-gold" id="review-approve-btn">
+                    <i class="bi bi-shield-check me-1"></i>Approve &amp; Seal Case
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
         </div>
 
         <!-- TAB 2: Manual Ingestion -->

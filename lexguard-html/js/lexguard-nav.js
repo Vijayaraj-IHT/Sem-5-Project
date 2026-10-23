@@ -164,6 +164,12 @@
                     <span class="badge badge-gold ms-auto">STAFF</span>
                   </a>
                 </li>
+                <li>
+                  <a href="audit-ledger.html" class="lg-sidebar-link ${activePage === 'audit' ? 'active' : ''}">
+                    <i class="bi bi-diagram-3-fill text-warning"></i>
+                    <span>Merkle Audit Ledger</span>
+                  </a>
+                </li>
               </ul>
             </div>
           ` : ''}

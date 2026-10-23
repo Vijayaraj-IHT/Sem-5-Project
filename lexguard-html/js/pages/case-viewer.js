@@ -129,9 +129,27 @@ $(document).ready(function () {
     // Tags
     const acts = c.acts || c.act_tags || [];
     const sections = c.sections || c.section_tags || [];
+    const kws = c.keyword_tags || [];
     const all = acts.concat(sections);
     if (all.length > 0) {
       $overviewTags.html(all.map(t => `<span class="badge bg-dark text-secondary border border-secondary border-opacity-25">${LG.utils.escapeHtml(t)}</span>`).join(' '));
+    }
+
+    // Populate Keyword Entity Chips for in-document search
+    const allChips = acts.concat(sections).concat(kws);
+    const $chipsContainer = $('#keyword-entity-chips');
+    $chipsContainer.empty();
+    if (allChips.length > 0) {
+      allChips.slice(0, 10).forEach(function (tag) {
+        const chip = $(`<button type="button" class="btn btn-xs btn-outline-secondary text-light py-0 px-2 rounded-pill" style="font-size: 0.72rem;">${LG.utils.escapeHtml(tag)}</button>`);
+        chip.on('click', function () {
+          $('#doc-keyword-input').val(tag);
+          executeDocKeywordSearch(tag);
+        });
+        $chipsContainer.append(chip);
+      });
+    } else {
+      $chipsContainer.html('<span class="text-secondary small fst-italic">No legal entities extracted</span>');
     }
 
     // Citation
@@ -142,6 +160,96 @@ $(document).ready(function () {
       LG.utils.copyToClipboard(citation, 'Citation copied: ' + citation);
     });
   }
+
+  /* -------------------------------------------------------------------------
+     In-Document Keyword Search & Extraction Engine
+     ------------------------------------------------------------------------- */
+  function executeDocKeywordSearch(query) {
+    query = (query || $('#doc-keyword-input').val() || '').trim();
+    if (!query) {
+      $('#doc-keyword-results-panel').addClass('d-none');
+      $('#doc-keyword-clear-btn').addClass('d-none');
+      return;
+    }
+
+    $('#doc-keyword-clear-btn').removeClass('d-none');
+    $('#doc-keyword-btn-spinner').removeClass('d-none');
+    $('#doc-keyword-submit-btn').prop('disabled', true);
+
+    LG.api.cases.searchKeywords(caseId, query)
+      .done(function (res) {
+        const matches = res.total_matches || 0;
+        const pages = res.pages_matched || [];
+        const occurrences = res.occurrences || [];
+
+        $('#doc-keyword-match-count').text(`${matches} match${matches !== 1 ? 'es' : ''} found`);
+        $('#doc-keyword-pages-summary').text(`across ${pages.length} page${pages.length !== 1 ? 's' : ''}`);
+
+        // Render Page Pills
+        const $pills = $('#doc-keyword-page-pills');
+        $pills.empty();
+        pages.forEach(function (p) {
+          const pill = $(`<button type="button" class="btn btn-xs btn-outline-warning px-2 py-1"><i class="bi bi-file-earmark-text me-1"></i>Page ${p}</button>`);
+          pill.on('click', function () {
+            // Switch to PDF tab
+            const tabTrigger = new bootstrap.Tab(document.getElementById('tab-pdf-btn'));
+            tabTrigger.show();
+            // Jump to page
+            pageNum = p;
+            queueRenderPage(pageNum);
+            $pdfCurrentPage.val(p);
+          });
+          $pills.append(pill);
+        });
+
+        // Render Context Snippets
+        const $snippets = $('#doc-keyword-snippets-container');
+        $snippets.empty();
+        if (occurrences.length > 0) {
+          occurrences.forEach(function (occ) {
+            const card = $(`
+              <div class="card bg-dark border-secondary border-opacity-25 p-2 small">
+                <div class="d-flex align-items-center justify-content-between mb-1">
+                  <span class="badge bg-secondary font-mono" style="font-size: 0.68rem;">Page ${occ.page} · Line ${occ.line_no}</span>
+                  <button type="button" class="btn btn-xs btn-link text-warning p-0 text-decoration-none">Jump to Page ${occ.page} &rarr;</button>
+                </div>
+                <div class="text-light font-monospace small">${occ.snippet || occ.raw_text}</div>
+              </div>
+            `);
+            card.find('button').on('click', function () {
+              const tabTrigger = new bootstrap.Tab(document.getElementById('tab-pdf-btn'));
+              tabTrigger.show();
+              pageNum = occ.page;
+              queueRenderPage(pageNum);
+              $pdfCurrentPage.val(occ.page);
+            });
+            $snippets.append(card);
+          });
+        } else {
+          $snippets.html('<div class="text-secondary small fst-italic">No contextual snippets available.</div>');
+        }
+
+        $('#doc-keyword-results-panel').removeClass('d-none');
+      })
+      .fail(function (xhr) {
+        LG.toast('Keyword search error or no matches found.', 'warning');
+      })
+      .always(function () {
+        $('#doc-keyword-btn-spinner').addClass('d-none');
+        $('#doc-keyword-submit-btn').prop('disabled', false);
+      });
+  }
+
+  $('#doc-keyword-search-form').on('submit', function (e) {
+    e.preventDefault();
+    executeDocKeywordSearch();
+  });
+
+  $('#doc-keyword-clear-btn').on('click', function () {
+    $('#doc-keyword-input').val('');
+    $('#doc-keyword-results-panel').addClass('d-none');
+    $(this).addClass('d-none');
+  });
 
   /**
    * Render Tab 3: CIS Metadata fields and JSON viewer.
@@ -412,24 +520,50 @@ $(document).ready(function () {
     if (pdfLoaded) return;
     pdfLoaded = true;
 
-    const pdfUrl = LG.api.cases.getOfficialContentUrl(caseId);
+    const downloadEndpoint = LG.config.API_BASE + '/cases/' + encodeURIComponent(caseId) + '/download';
+    const token = LG.session.token();
+    const headers = {};
+    if (token) headers['Authorization'] = 'Bearer ' + token;
 
     if (window.pdfjsLib) {
-      window.pdfjsLib.getDocument({
-        url: pdfUrl,
-        withCredentials: true
-      }).promise.then(function (loadedDoc) {
+      $pdfLoading.removeClass('d-none');
+      $canvasWrapper.addClass('d-none');
+      $pdfFallbackText.addClass('d-none');
+
+      fetch(downloadEndpoint, {
+        headers: headers,
+        credentials: 'include'
+      })
+      .then(function (response) {
+        if (!response.ok) {
+          throw new Error('PDF stream error: HTTP ' + response.status);
+        }
+        return response.arrayBuffer();
+      })
+      .then(function (buffer) {
+        return window.pdfjsLib.getDocument({
+          data: buffer,
+          cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
+          cMapPacked: true
+        }).promise;
+      })
+      .then(function (loadedDoc) {
         pdfDoc = loadedDoc;
         $pdfTotalPages.text(pdfDoc.numPages);
         $pdfLoading.addClass('d-none');
         $canvasWrapper.removeClass('d-none');
         renderPage(pageNum);
         renderThumbnails();
-      }).catch(function (err) {
-        console.warn('PDF.js stream issue, falling back:', err);
+      })
+      .catch(function (err) {
+        console.warn('PDF.js binary render issue, falling back to text:', err);
         $pdfLoading.addClass('d-none');
-        if (currentCase && (currentCase.raw_text || currentCase.summary)) {
-          $pdfFallbackText.removeClass('d-none').text(currentCase.raw_text || currentCase.summary);
+        if (currentCase && (currentCase.full_text || currentCase.summary)) {
+          $pdfFallbackText.removeClass('d-none').html(`
+            <div class="p-4 bg-dark rounded border border-secondary border-opacity-25 font-monospace small" style="white-space: pre-wrap; line-height: 1.6;">
+              ${LG.utils.escapeHtml(currentCase.full_text || currentCase.summary)}
+            </div>
+          `);
         } else {
           $pdfFallbackText.removeClass('d-none').html(`
             <div class="text-center py-4">
@@ -525,6 +659,55 @@ $(document).ready(function () {
   // Toggle Thumbnails Drawer
   $toggleThumbnailsBtn.on('click', function () {
     $thumbnailsDrawer.toggleClass('collapsed');
+  });
+
+  // Case Brief Modal Handlers
+  $('#action-case-brief-btn').on('click', function () {
+    if (!currentCase) return;
+    const c = currentCase;
+    $('#brief-court-title').text((c.court || 'MADRAS HIGH COURT').toUpperCase());
+    $('#brief-case-no').text(c.case_no || '—');
+    $('#brief-cnr').text(c.cnr || '—');
+    $('#brief-coram').text(c.judge || 'Hon\'ble Judges of the Bench');
+    $('#brief-disposition').text(c.disposition || c.outcome || 'Disposed');
+    $('#brief-parties').text(c.parties || (c.title ? c.title : 'Appellant v. Respondent'));
+    
+    const acts = c.acts || c.act_tags || [];
+    const sections = c.sections || c.section_tags || [];
+    const statutes = acts.concat(sections);
+    if (statutes.length > 0) {
+      $('#brief-statutes').html(statutes.map(s => `<span class="badge bg-secondary">${LG.utils.escapeHtml(s)}</span>`).join(' '));
+    } else {
+      $('#brief-statutes').text('General Criminal & Constitutional Principles');
+    }
+
+    $('#brief-ratio').text(c.ratio_decidendi || 'Ratio affirmed under binding authority.');
+    $('#brief-summary').text(c.summary || c.facts || 'Case facts and procedural trajectory.');
+    $('#brief-seal-hash').text('SHA-256: ' + (c.file_hash || 'Computed on record'));
+
+    const modal = new bootstrap.Modal(document.getElementById('caseBriefModal'));
+    modal.show();
+  });
+
+  $('#brief-copy-md-btn').on('click', function () {
+    if (!currentCase) return;
+    const c = currentCase;
+    const md = `# JUDICIAL CASE BRIEF: ${c.case_no}\n\n**Court:** ${c.court}\n**CNR:** ${c.cnr || 'N/A'}\n**Coram:** ${c.judge}\n**Parties:** ${c.parties}\n**Disposition:** ${c.disposition || c.outcome}\n\n## Ratio Decidendi\n> ${c.ratio_decidendi}\n\n## Material Facts & Summary\n${c.summary || c.facts}\n\n---\n*LexGuard Verified SHA-256 Digest: ${c.file_hash}*`;
+    LG.utils.copyToClipboard(md, 'Case brief markdown copied to clipboard!');
+  });
+
+  $('#brief-download-json-btn').on('click', function () {
+    if (!currentCase) return;
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(currentCase, null, 2));
+    const dlAnchor = document.createElement('a');
+    dlAnchor.setAttribute('href', dataStr);
+    dlAnchor.setAttribute('download', `case_brief_${currentCase.case_no.replace(/[^a-zA-Z0-9]/g, '_')}.json`);
+    dlAnchor.click();
+    dlAnchor.remove();
+  });
+
+  $('#brief-print-btn').on('click', function () {
+    window.print();
   });
 
   // Bookmark Button Handler

@@ -39,6 +39,9 @@
         </div>
         <div class="d-flex align-items-center gap-2">
           <span class="badge bg-secondary">Multi-Precedent Tray (1 to 3 Cases)</span>
+          <button type="button" class="btn btn-sm btn-gold" id="export-comparison-btn">
+            <i class="bi bi-download me-1"></i>Export Matrix
+          </button>
           <button type="button" class="btn btn-sm btn-judicial-outline" id="print-report-btn">
             <i class="bi bi-printer me-1"></i>Print Report
           </button>
@@ -220,6 +223,51 @@
 
     </div>
   </main>
+
+  <!-- Precedent Comparison Export Modal -->
+  <div class="modal fade" id="comparisonExportModal" tabindex="-1" aria-labelledby="compExportModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content bg-dark border-secondary">
+        <div class="modal-header border-secondary border-opacity-25">
+          <h5 class="modal-title text-white" id="compExportModalLabel">
+            <i class="bi bi-file-earmark-spreadsheet text-warning me-2"></i>Export Precedent Comparison Matrix
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4 bg-black bg-opacity-30">
+          <p class="text-secondary small mb-3">
+            Choose your preferred format to export the multi-case comparative dimensional scores and statutory concordance matrix:
+          </p>
+          <div class="d-flex flex-column gap-3">
+            <button type="button" class="btn btn-judicial-outline text-start p-3 d-flex align-items-center justify-content-between" id="export-csv-btn">
+              <div>
+                <div class="fw-bold text-white"><i class="bi bi-filetype-csv text-success me-2"></i>Download CSV Data Sheet</div>
+                <div class="small text-secondary">Structured table with dimensions, scores, matches, and values.</div>
+              </div>
+              <i class="bi bi-arrow-right text-secondary"></i>
+            </button>
+            <button type="button" class="btn btn-judicial-outline text-start p-3 d-flex align-items-center justify-content-between" id="export-md-btn">
+              <div>
+                <div class="fw-bold text-white"><i class="bi bi-markdown text-info me-2"></i>Copy Markdown Matrix Table</div>
+                <div class="small text-secondary">Formatted markdown table ready for research memos and pleadings.</div>
+              </div>
+              <i class="bi bi-clipboard text-secondary"></i>
+            </button>
+            <button type="button" class="btn btn-judicial-outline text-start p-3 d-flex align-items-center justify-content-between" id="export-print-btn">
+              <div>
+                <div class="fw-bold text-white"><i class="bi bi-printer text-warning me-2"></i>Print Official Comparison Memo</div>
+                <div class="small text-secondary">High Court styled printable format with benchmark analysis.</div>
+              </div>
+              <i class="bi bi-printer text-secondary"></i>
+            </button>
+          </div>
+        </div>
+        <div class="modal-footer border-secondary border-opacity-25">
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- CDN JS Dependencies -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>

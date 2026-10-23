@@ -174,7 +174,7 @@
         return apiRequest({
           url: '/cases/' + encodeURIComponent(caseId) + '/search-keywords',
           method: 'GET',
-          data: { keyword: keyword }
+          data: { q: keyword }
         });
       },
 

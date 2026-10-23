@@ -242,6 +242,65 @@ $(document).ready(function () {
     window.print();
   });
 
+  // Export Modal Handlers
+  const compExportModal = new bootstrap.Modal(document.getElementById('comparisonExportModal'));
+
+  $('#export-comparison-btn').on('click', function () {
+    compExportModal.show();
+  });
+
+  $('#export-csv-btn').on('click', function () {
+    if (!currentMultiData || !currentMultiData.results) {
+      LG.toast('Run a comparison first before exporting.', 'warning');
+      return;
+    }
+    const headers = ['Dimension', 'Target Case'];
+    currentMultiData.results.forEach(r => headers.push(r.precedent_case_no || r.precedent_id));
+    let csv = headers.map(h => `"${h}"`).join(',') + '\n';
+
+    DIMENSION_KEYS.forEach(function (d, dIdx) {
+      const row = [d.name, (currentMultiData.target_case && currentMultiData.target_case[d.key]) || 'N/A'];
+      currentMultiData.results.forEach(function (r) {
+        const dim = (r.dimensions || [])[dIdx] || {};
+        row.push(`${dim.match_state || 'N/A'} (${Math.round(dim.dimension_score || 0)}%)`);
+      });
+      csv += row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',') + '\n';
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `precedent_comparison_${Date.now()}.csv`;
+    link.click();
+    LG.toast('CSV matrix downloaded successfully!', 'success');
+    compExportModal.hide();
+  });
+
+  $('#export-md-btn').on('click', function () {
+    if (!currentMultiData || !currentMultiData.results) {
+      LG.toast('Run a comparison first before exporting.', 'warning');
+      return;
+    }
+    let md = `| Dimension | Target Case | ` + currentMultiData.results.map(r => r.precedent_case_no || r.precedent_id).join(' | ') + ` |\n`;
+    md += `| --- | --- | ` + currentMultiData.results.map(() => `---`).join(' | ') + ` |\n`;
+
+    DIMENSION_KEYS.forEach(function (d, dIdx) {
+      md += `| **${d.name}** | ` + ((currentMultiData.target_case && currentMultiData.target_case[d.key]) || 'N/A') + ` | `;
+      md += currentMultiData.results.map(r => {
+        const dim = (r.dimensions || [])[dIdx] || {};
+        return `${dim.match_state} (${Math.round(dim.dimension_score || 0)}%)`;
+      }).join(' | ') + ` |\n`;
+    });
+
+    LG.utils.copyToClipboard(md, 'Markdown comparative matrix copied to clipboard!');
+    compExportModal.hide();
+  });
+
+  $('#export-print-btn').on('click', function () {
+    compExportModal.hide();
+    window.print();
+  });
+
   // Initial Load
   loadPrecedents();
 });

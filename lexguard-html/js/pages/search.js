@@ -82,6 +82,9 @@ $(document).ready(function () {
       .done(function (res) {
         totalResults = res.total || 0;
         $resultsCount.text(totalResults);
+        if (totalResults > 0) {
+          $('#total-cases-badge').text(`${totalResults} Indexed Judgments`);
+        }
 
         // Render InLegalBERT query understanding if present
         if (res.query_understanding && (res.query_understanding.statutory_sections?.length || res.query_understanding.legal_issues?.length)) {
