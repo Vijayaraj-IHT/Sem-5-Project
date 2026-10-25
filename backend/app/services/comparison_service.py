@@ -19,6 +19,16 @@ from app.core.concordance import (
     SCENARIO_CLUSTERS,
     ACTIVITY_CLUSTERS,
 )
+from app.core.category_extractor import (
+    detect_case_category,
+    extract_polymorphic_facts,
+    CATEGORY_BAIL_SUSPENSION,
+    CATEGORY_NDPS,
+    CATEGORY_QUASHING,
+    CATEGORY_SERVICE_WRIT,
+    CATEGORY_COMMERCIAL_CIVIL,
+    CATEGORY_GENERAL_CONSTITUTIONAL,
+)
 
 
 class CaseComparisonService:
@@ -80,12 +90,140 @@ class CaseComparisonService:
                 if kw in low and kw not in activities:
                     activities.append(kw)
 
+        # 3. Polymorphic Category & Structured Facts
+        target_cat = detect_case_category(
+            combined_text,
+            req.statutory_provisions,
+            req.target_case_no or "",
+            req.case_title or "",
+            req.court_jurisdiction or ""
+        )
+        target_cat_facts = extract_polymorphic_facts(
+            combined_text,
+            target_cat,
+            req.statutory_provisions,
+            req.target_case_no or "",
+            req.case_title or ""
+        )
+
         return {
             "norm_sections": norm_secs,
             "scenario_set": set(scenarios),
             "activity_set": set(activities),
             "remedy": req.remedy_sought or req.outcome or "",
+            "category": target_cat,
+            "category_facts": target_cat_facts,
         }
+
+    def _compare_category_facts(
+        self,
+        t_cat: str,
+        t_facts: Dict[str, Any],
+        p_facts: Dict[str, Any],
+    ) -> Tuple[float, List[str], List[str]]:
+        """
+        Compares structured category-specific facts between target and precedent.
+        Returns: (boost_score, matched_terms, observation_notes)
+        """
+        if not t_facts or not p_facts:
+            return 0.0, [], []
+
+        p_cat = p_facts.get("category", "")
+        if t_cat != p_cat:
+            return 0.0, [], ["Cases originate from distinct procedural categories."]
+
+        matched_terms: List[str] = [f"Category: {t_cat}"]
+        observations: List[str] = []
+        score_boost = 15.0  # Base category alignment
+
+        if t_cat == CATEGORY_BAIL_SUSPENSION:
+            t_app = t_facts.get("application_type")
+            p_app = p_facts.get("application_type")
+            if t_app and p_app and t_app == p_app:
+                score_boost += 10.0
+                matched_terms.append(f"Prayer: {t_app}")
+                observations.append(f"Matching procedural prayer ({t_app}).")
+
+            # Compare trial court fines
+            t_fine = t_facts.get("trial_court_fine")
+            p_fine = p_facts.get("trial_court_fine")
+            if t_fine is not None and p_fine is not None:
+                if abs(float(t_fine) - float(p_fine)) < 1.0:
+                    score_boost += 12.0
+                    matched_terms.append(f"Trial Fine: Rs.{int(t_fine):,}")
+                    observations.append(f"Identical Trial Court penal fine: Rs.{int(t_fine):,}.")
+                else:
+                    score_boost += 5.0
+                    observations.append(f"Both involve Trial Court fines (Rs.{int(t_fine):,} vs Rs.{int(p_fine):,}).")
+
+            # Compare bail bond amounts
+            t_bond = t_facts.get("bail_bond_amount")
+            p_bond = p_facts.get("bail_bond_amount")
+            if t_bond is not None and p_bond is not None:
+                if abs(float(t_bond) - float(p_bond)) < 1.0:
+                    score_boost += 10.0
+                    matched_terms.append(f"Bail Bond: Rs.{int(t_bond):,}")
+                    observations.append(f"Identical High Court surety bond condition: Rs.{int(t_bond):,}.")
+
+            # Compare relief reasoning
+            t_reason = t_facts.get("reason_for_relief")
+            p_reason = p_facts.get("reason_for_relief")
+            if t_reason and p_reason:
+                if "near future" in t_reason.lower() and "near future" in p_reason.lower():
+                    score_boost += 15.0
+                    matched_terms.append("Ground: Appeal unlikely in near future")
+                    observations.append("Both rely on ground: Appeal unlikely to be heard in near future.")
+                elif "antecedents" in t_reason.lower() and "antecedents" in p_reason.lower():
+                    score_boost += 10.0
+                    matched_terms.append("Ground: Clean criminal record")
+
+        elif t_cat == CATEGORY_NDPS:
+            t_qty_cat = t_facts.get("quantity_category")
+            p_qty_cat = p_facts.get("quantity_category")
+            if t_qty_cat and p_qty_cat and t_qty_cat == p_qty_cat:
+                score_boost += 15.0
+                matched_terms.append(f"NDPS Threshold: {t_qty_cat}")
+                observations.append(f"Matching contraband category ({t_qty_cat}).")
+
+            t_drug = (t_facts.get("contraband_type") or "").lower()
+            p_drug = (p_facts.get("contraband_type") or "").lower()
+            if t_drug and p_drug and (t_drug in p_drug or p_drug in t_drug):
+                score_boost += 10.0
+                matched_terms.append(f"Contraband: {t_facts.get('contraband_type')}")
+                observations.append(f"Identical narcotic contraband ({t_facts.get('contraband_type')}).")
+
+            if t_facts.get("section_37_embargo") and p_facts.get("section_37_embargo"):
+                score_boost += 15.0
+                matched_terms.append("Section 37 Twin Conditions Bar")
+                observations.append("Section 37 twin conditions statutory embargo applies to both matters.")
+
+        elif t_cat == CATEGORY_QUASHING:
+            if t_facts.get("civil_cloak") and p_facts.get("civil_cloak"):
+                score_boost += 20.0
+                matched_terms.append("Ground: Civil dispute cloaked as crime")
+                observations.append("Both ground quashing on civil/commercial dispute cloaked as criminal offence.")
+            if t_facts.get("compromise_affidavit") and p_facts.get("compromise_affidavit"):
+                score_boost += 20.0
+                matched_terms.append("Ground: Amicable Joint Compromise")
+                observations.append("Both petitions cite amicable settlement and joint compromise memo.")
+
+        elif t_cat == CATEGORY_SERVICE_WRIT:
+            t_sought = t_facts.get("service_relief_sought", "")
+            p_sought = p_facts.get("service_relief_sought", "")
+            if t_sought and p_sought and t_sought == p_sought:
+                score_boost += 20.0
+                matched_terms.append(f"Service Claim: {t_sought}")
+                observations.append(f"Congruent service relief prayer ({t_sought}).")
+
+        elif t_cat == CATEGORY_COMMERCIAL_CIVIL:
+            t_disp = t_facts.get("dispute_type", "")
+            p_disp = p_facts.get("dispute_type", "")
+            if t_disp and p_disp and t_disp == p_disp:
+                score_boost += 20.0
+                matched_terms.append(f"Commercial Cause: {t_disp}")
+                observations.append(f"Identical commercial dispute jurisdiction ({t_disp}).")
+
+        return min(score_boost, 45.0), matched_terms, observations
 
     def compare_case(self, req: CaseComparisonRequest, precedent: Case) -> CaseComparisonResponse:
         """
@@ -253,7 +391,7 @@ class CaseComparisonService:
         ))
 
         # -------------------------------------------------------------
-        # Dimension 2: Scenario & Activity Sets (Tversky Index) (35%)
+        # Dimension 2: Scenario, Activity Sets & Polymorphic Facts (35%)
         # -------------------------------------------------------------
         t_scen = target_prof["scenario_set"]
         p_scen = set(prec_prof.get("scenario_keywords", []))
@@ -267,19 +405,28 @@ class CaseComparisonService:
         matched_scenarios = list(t_scen.intersection(p_scen))
         matched_activities = list(t_act.intersection(p_act))
 
-        # Calculate composite factual score
-        if matched_scenarios or matched_activities:
-            dim2_score = round(min(55.0 + (tversky_scen * 25.0) + (tversky_act * 25.0) + (len(matched_scenarios) * 5.0), 96.0), 1)
-            dim2_state = "exact" if dim2_score >= 85.0 else "partial"
-            terms_preview = ", ".join((matched_scenarios + matched_activities)[:4])
-            dim2_exp = f"Grounded scenario & procedural activity overlap: '{terms_preview}'."
+        # Polymorphic Category Fact Comparison
+        cat_boost, cat_matched_terms, cat_notes = self._compare_category_facts(
+            target_prof.get("category", ""),
+            target_prof.get("category_facts", {}),
+            prec_prof.get("category_facts", {})
+        )
+
+        # Composite factual score
+        base_fact_score = (tversky_scen * 22.0) + (tversky_act * 22.0) + (len(matched_scenarios) * 4.0)
+        dim2_score = round(min(35.0 + base_fact_score + cat_boost, 98.0), 1)
+        dim2_state = "exact" if dim2_score >= 85.0 else ("partial" if dim2_score >= 50.0 else "different")
+
+        all_matched_terms = list(dict.fromkeys(cat_matched_terms + matched_scenarios + matched_activities))
+        if cat_notes:
+            dim2_exp = f"{' '.join(cat_notes)} Procedural overlay: {', '.join((matched_scenarios + matched_activities)[:3]) or 'Standard matrix'}."
+        elif all_matched_terms:
+            dim2_exp = f"Grounded scenario & procedural activity overlap: '{', '.join(all_matched_terms[:4])}'."
         else:
-            dim2_score = 30.0
-            dim2_state = "different"
             dim2_exp = "Factual dispute scenario and procedural trajectory diverge from precedent."
 
         dimensions.append(DimensionComparisonResult(
-            dimension_name="Facts & Dispute Context (Scenario & Activities)",
+            dimension_name="Facts & Dispute Context (Polymorphic Matrix)",
             user_value=(user_facts_raw[:90] + "...") if len(user_facts_raw) > 90 else (user_facts_raw or "Petition factual scenario"),
             precedent_value=(prec_facts_raw[:90] + "...") if len(prec_facts_raw) > 90 else (prec_facts_raw or "Precedent factual matrix"),
             match_state=dim2_state,

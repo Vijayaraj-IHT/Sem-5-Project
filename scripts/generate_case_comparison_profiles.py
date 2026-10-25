@@ -15,6 +15,10 @@ from app.core.concordance import (
     SCENARIO_CLUSTERS,
     ACTIVITY_CLUSTERS,
 )
+from app.core.category_extractor import (
+    detect_case_category,
+    extract_polymorphic_facts,
+)
 
 def build_profile_for_case(c: Case) -> dict:
     combined_text = " ".join([
@@ -70,16 +74,41 @@ def build_profile_for_case(c: Case) -> dict:
     scenario_clusters = extract_scenario_clusters(low_text)
     activity_clusters = extract_activity_clusters(low_text)
 
-    # 5. Procedural Posture
+    # 5. Polymorphic Category Facts (Fine vs Bail Bond, Custody, NDPS Contraband, etc.)
+    full_judgment_text = (c.full_text or "")
+    if len(full_judgment_text) < 100:
+        full_judgment_text = combined_text
+
+    cat = detect_case_category(
+        full_judgment_text,
+        c.section_tags or [],
+        c.case_no or "",
+        c.title or "",
+        c.court or "",
+    )
+    cat_facts = extract_polymorphic_facts(
+        full_judgment_text,
+        cat,
+        c.section_tags or [],
+        c.case_no or "",
+        c.title or "",
+    )
+
+    # 6. Procedural Posture
     disp = c.outcome or c.disposition or "Allowed"
 
     return {
-        "profile_version": "2.0",
+        "profile_version": "2.5",
         "case_id": c.id,
         "case_no": c.case_no,
         "title": c.title,
         "court": c.court,
+        "petitioner": c.petitioner,
+        "respondent": c.respondent,
+        "parties": c.parties,
         "legal_domain": c.legal_domain or "General",
+        "category": cat,
+        "category_facts": cat_facts,
         "statutory_matrix": statutory_matrix,
         "scenario_keywords": matched_scenarios[:12],
         "activity_events": matched_activities[:10],
