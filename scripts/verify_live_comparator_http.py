@@ -2,7 +2,7 @@ import urllib.request
 import json
 
 def test():
-    req1 = urllib.request.urlopen("http://127.0.0.1:8000/api/v1/comparison/precedents?q=16662")
+    req1 = urllib.request.urlopen("http://127.0.0.1:8000/api/v1/comparison/precedents?q=Marimuthu")
     prec_list = json.loads(req1.read().decode())
     print(f"Fetched {len(prec_list)} precedents matching 16662")
     target = prec_list[0]
