@@ -4,12 +4,16 @@ from pydantic import BaseModel, Field
 
 class CaseComparisonRequest(BaseModel):
     precedent_case_id: str = Field(..., description="Target registered precedent case ID (must be published)")
+    target_case_id: Optional[str] = Field(default=None, description="Optional ID of target case if selected from repository")
+    target_file_hash: Optional[str] = Field(default=None, description="SHA-256 hash of target document if available")
+    target_case_no: Optional[str] = Field(default=None, description="Case registration number of target matter")
     case_title: Optional[str] = Field(default=None, max_length=300, description="Title of user case or petition")
     court_jurisdiction: Optional[str] = Field(default=None, max_length=150, description="Court or forum name")
     practice_area: Optional[str] = Field(default=None, max_length=100, description="Legal field, e.g., Criminal, Cyber Law, Arbitration")
     facts_summary: Optional[str] = Field(default=None, description="Concise factual matrix (not retained by server)")
     legal_issues: List[str] = Field(default_factory=list, description="Legal questions or issues framed")
     statutory_provisions: List[str] = Field(default_factory=list, description="Acts, Sections, or Articles invoked, e.g. Section 438 CrPC")
+    keyword_tags: List[str] = Field(default_factory=list, description="Key summary terms or concept tags")
     remedy_sought: Optional[str] = Field(default=None, max_length=150, description="Specific prayer or remedy, e.g. Anticipatory Bail, Quashing")
     procedural_status: Optional[str] = Field(default=None, max_length=100, description="Procedural posture, e.g. Pre-arrest, Trial, Appeal")
     outcome: Optional[str] = Field(default=None, max_length=100, description="Outcome if decided, or 'Pending' if ongoing")
@@ -25,6 +29,8 @@ class DimensionComparisonResult(BaseModel):
     dimension_score: float  # 0 to 100
     explanation: str
     is_included_in_score: bool
+    matched_terms: List[str] = Field(default_factory=list)
+    concordance_info: Optional[str] = None
 
 
 class PrecedentSummary(BaseModel):
@@ -40,9 +46,13 @@ class PrecedentSummary(BaseModel):
 
 class CaseComparisonResponse(BaseModel):
     overall_score: float  # 0 to 100
-    score_method: str = "lexguard-deterministic-v1.0"
+    score_method: str = "lexguard-cbr-concordance-v2.5"
+    distinguishability_rating: str = "Analogous"
     dimensions: List[DimensionComparisonResult]
     precedent: PrecedentSummary
+    matched_scenario_terms: List[str] = Field(default_factory=list)
+    matched_activity_terms: List[str] = Field(default_factory=list)
+    matched_statutes: List[str] = Field(default_factory=list)
     disclaimer: str = (
         "This comparison score is generated as a structured legal research aid based on transparent "
         "factual and statutory dimension matching. It does not predict judicial outcomes, constitute legal advice, "
@@ -52,12 +62,16 @@ class CaseComparisonResponse(BaseModel):
 
 class MultiCaseComparisonRequest(BaseModel):
     precedent_case_ids: List[str] = Field(..., min_length=1, max_length=3, description="List of 1 to 3 published precedent IDs")
+    target_case_id: Optional[str] = Field(default=None, description="Optional ID of target case if selected from repository")
+    target_file_hash: Optional[str] = Field(default=None, description="SHA-256 hash of target document if available")
+    target_case_no: Optional[str] = Field(default=None, description="Case registration number of target matter")
     case_title: Optional[str] = Field(default=None, max_length=300, description="Title of user case or petition")
     court_jurisdiction: Optional[str] = Field(default=None, max_length=150, description="Court or forum name")
     practice_area: Optional[str] = Field(default=None, max_length=100, description="Legal field, e.g., Criminal, Cyber Law, Commercial")
     facts_summary: Optional[str] = Field(default=None, description="Concise factual matrix (not retained by server)")
     legal_issues: List[str] = Field(default_factory=list, description="Legal questions or issues framed")
     statutory_provisions: List[str] = Field(default_factory=list, description="Acts, Sections, or Articles invoked, e.g. Section 438 CrPC")
+    keyword_tags: List[str] = Field(default_factory=list, description="Key summary terms or concept tags")
     remedy_sought: Optional[str] = Field(default=None, max_length=150, description="Specific prayer or remedy, e.g. Anticipatory Bail, Quashing")
     procedural_status: Optional[str] = Field(default=None, max_length=100, description="Procedural posture, e.g. Pre-arrest, Trial, Appeal")
     outcome: Optional[str] = Field(default=None, max_length=100, description="Outcome if decided, or 'Pending' if ongoing")

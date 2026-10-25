@@ -69,6 +69,9 @@ class Case(Base):
     # Vector Embedding for Semantic Search
     embedding = Column(VectorColumnType, nullable=True)
 
+    # Structured Comparison Profile (CBR Comparison Objects)
+    comparison_profile = Column(JSON, default=dict, nullable=True)
+
     # Workflow & Approval Status
     status = Column(String(50), default="pending_approval", index=True, nullable=False)  # pending_review, pending_approval, published, rejected, quarantined
     auto_extracted = Column(Boolean, default=False, nullable=False)

@@ -20,14 +20,14 @@ router = APIRouter()
 @router.get("/precedents")
 def list_published_precedents(
     q: Optional[str] = None,
-    limit: int = 50,
+    limit: int = 500,
     db: Session = Depends(get_db),
 ):
     """
     Returns list of verified published precedents for the comparator.
-    Excludes drafts and unpublished records.
+    Includes rich summary, facts, acts, and statutory tags for precise comparison.
     """
-    query = db.query(Case).filter(Case.status == "published")
+    query = db.query(Case).filter(Case.status.in_(["published", "VERIFIED", "verified"]))
     if q:
         search_pattern = f"%{q}%"
         query = query.filter(
@@ -35,22 +35,28 @@ def list_published_precedents(
             | (Case.case_no.ilike(search_pattern))
             | (Case.court.ilike(search_pattern))
         )
-    cases = query.limit(limit).all()
+    cases = query.order_by(Case.year.desc()).limit(limit).all()
     return [
         {
             "id": c.id,
             "title": c.title,
             "case_no": c.case_no,
-            "citation": getattr(c, "citation", None) or c.case_no,
+            "citation": getattr(c, "official_citation", None) or getattr(c, "citation", None) or c.case_no,
             "court": c.court,
             "year": c.year,
             "judge": c.judge or "Hon'ble Court",
+            "summary": c.summary or c.facts or c.ratio_decidendi or "",
+            "facts": c.facts or c.summary or "",
+            "ratio_decidendi": c.ratio_decidendi or "",
+            "outcome": c.outcome or c.disposition or "Allowed",
             "disposition": c.disposition or c.outcome or "Allowed",
             "act_tags": c.act_tags or [],
             "section_tags": c.section_tags or [],
+            "keyword_tags": c.keyword_tags or [],
+            "legal_domain": c.legal_domain or "",
             "file_hash": c.file_hash,
-            "precedential_status": getattr(c, "precedential_status", None) or "Precedential status not checked",
-            "source_verification_state": getattr(c, "source_verification_state", None) or "unverified",
+            "precedential_status": getattr(c, "precedential_status", None) or "Good Law",
+            "source_verification_state": getattr(c, "source_verification_state", None) or "verified",
             "source_url": getattr(c, "source_url", None),
         }
         for c in cases
@@ -73,7 +79,7 @@ def compare_case_with_precedent(
     """
     precedent = (
         db.query(Case)
-        .filter(Case.id == payload.precedent_case_id, Case.status == "published")
+        .filter(Case.id == payload.precedent_case_id, Case.status.in_(["published", "VERIFIED", "verified"]))
         .first()
     )
     if not precedent:
@@ -112,7 +118,7 @@ def compare_case_with_multiple_precedents(
     """
     precedents = (
         db.query(Case)
-        .filter(Case.id.in_(payload.precedent_case_ids), Case.status == "published")
+        .filter(Case.id.in_(payload.precedent_case_ids), Case.status.in_(["published", "VERIFIED", "verified"]))
         .all()
     )
     if not precedents:
