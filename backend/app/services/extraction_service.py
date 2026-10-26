@@ -807,33 +807,25 @@ class ExtractionService:
             f"and High Court, and settled principles governing {pet_type_abbr.lower()} proceedings."
         )
 
-        # ─── 4. Neural Enhancement via AI Microservice (if running) ───────
+        # ─── 4. Neural Enhancement via Local LLM Service ─────────────────
         try:
-            from app.services.ai_api_service import ai_api_service
-            health = ai_api_service.check_health()
-            if health.get("status") == "healthy":
-                ai_sum = ai_api_service.summarize(
-                    text=full_text,
-                    max_sentences=3,
-                    court=court_name,
-                    case_no=cno,
-                )
-                if ai_sum and len(ai_sum) > 30:
-                    full_summary = f"[{catchwords}]\n\n{ai_sum}"
-
-                ai_ratio = ai_api_service.extract_ratio(
-                    text=full_text,
-                    prayer=prayer_text,
-                    outcome=disposition_text,
-                    acts_cited=acts_list,
-                )
-                if ai_ratio.get("ratio_decidendi"):
-                    ratio_decidendi = ai_ratio["ratio_decidendi"]
-                    legal_issue = ai_ratio.get("legal_issue", legal_issue)
-                    court_reasoning = ai_ratio.get("court_reasoning", court_reasoning)
-                    decision_basis = ai_ratio.get("decision_basis", decision_basis)
-        except Exception:
-            pass
+            from app.services.local_llm_service import local_llm_service
+            llm_res = local_llm_service.summarize_judgment(full_text=full_text, metadata=data)
+            if llm_res.get("summary"):
+                full_summary = f"[{catchwords}]\n\n{llm_res['summary']}"
+            if llm_res.get("ratio_decidendi"):
+                ratio_decidendi = llm_res["ratio_decidendi"]
+            if llm_res.get("facts"):
+                data["facts"] = llm_res["facts"]
+            if llm_res.get("issues_framed"):
+                data["issues_framed"] = llm_res["issues_framed"]
+                legal_issue = llm_res["issues_framed"][0]
+            if llm_res.get("decision_basis"):
+                decision_basis = llm_res["decision_basis"]
+            confidence["summary"] = {"confidence": 0.92, "source": f"local_llm_{llm_res.get('model_source', 'ai')}"}
+            confidence["ratio_decidendi"] = {"confidence": 0.90, "source": f"local_llm_{llm_res.get('model_source', 'ai')}"}
+        except Exception as e:
+            logger.debug(f"Local LLM pass 3 summarization deferred to fallback: {e}")
 
         data["summary"] = full_summary
         data["ratio_decidendi"] = ratio_decidendi

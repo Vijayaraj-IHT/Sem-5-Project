@@ -1,4 +1,7 @@
 from typing import List, Union, Optional
+from pathlib import Path
+import os
+import re
 import json
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -48,6 +51,7 @@ class Settings(BaseSettings):
     # Optional Fallbacks
     ANTHROPIC_API_KEY: str = ""
     USE_MOCK_LLM: bool = False
+    DEMO_MODE: bool = False
 
     # CORS Allowed Origins
     CORS_ORIGINS: Union[List[str], str] = [
@@ -90,4 +94,51 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+COURT_CODES = {
+    "supreme court of india": "SC",
+    "madras high court": "MHC",
+    "madras high court (principal seat)": "MHC-PS",
+    "madras high court (madurai bench)": "MHC-MB",
+    "high court of chhattisgarh": "CHC",
+    "chhattisgarh high court": "CHC",
+    "calcutta high court": "CHC",
+    "high court of judicature at bombay": "BHC",
+    "bombay high court": "BHC",
+    "high court of judicature at patna": "PHC",
+    "patna high court": "PHC",
+    "orissa high court": "OHC",
+    "high court of orissa": "OHC",
+    "gujarat high court": "GHC",
+    "high court of gujarat": "GHC",
+    "high court of jammu & kashmir": "JKHC",
+    "high court of punjab and haryana": "PHHC",
+    "high court of himachal pradesh": "HPHC",
+}
+
+
+def build_case_pdf_filename(court: str, year: int, case_no: str, case_id: str) -> str:
+    court_key = (court or "").strip().lower()
+    court_code = COURT_CODES.get(court_key, "HC")
+    clean_case_no = re.sub(r"[^A-Za-z0-9]+", "_", (case_no or "CASE")).strip("_")[:40]
+    short_id = str(case_id).split("-")[0][:8]
+    return f"{court_code}_{year}_{clean_case_no}_{short_id}.pdf"
+
+
+def resolve_case_pdf_path(stored_path: str) -> Optional[Path]:
+    if not stored_path:
+        return None
+    p = Path(stored_path)
+    if p.exists():
+        return p
+    clean_name = Path(stored_path.replace("\\", "/")).name
+    candidate = Path(settings.STORAGE_DIR) / clean_name
+    if candidate.exists():
+        return candidate
+    root_candidate = Path("storage/cases") / clean_name
+    if root_candidate.exists():
+        return root_candidate
+    return None
+
 

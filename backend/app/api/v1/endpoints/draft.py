@@ -36,26 +36,54 @@ def analyze_draft_petition(
     3. Suggests applicable statutory sections and grounded case citations.
     4. Enforces strict citation grounding to prevent legal hallucination.
     """
-    # Fetch available published cases to ground citations
-    published_cases = (
-        db.query(Case)
-        .filter(Case.status == "published")
-        .order_by(Case.created_at.desc())
-        .limit(10)
-        .all()
-    )
+    # Grounded RAG: compute vector embedding and retrieve top 5 matching published precedents
+    retrieved_cases = []
+    try:
+        from app.services.embedding_service import embedding_service
+        draft_embedding = embedding_service.generate_embedding(draft_in.petition_text[:1000])
+
+        try:
+            retrieved_cases = (
+                db.query(Case)
+                .filter(Case.status == "published", Case.embedding.isnot(None))
+                .order_by(Case.embedding.cosine_distance(draft_embedding))
+                .limit(5)
+                .all()
+            )
+        except Exception:
+            retrieved_cases = []
+    except Exception:
+        retrieved_cases = []
+
+    if not retrieved_cases:
+        # Fallback keyword / section matching RAG
+        import re
+        from sqlalchemy import or_
+        secs = re.findall(r"\b(?:Section|Sec\.?)\s*([0-9A-Za-z]+)", draft_in.petition_text, re.I)
+        query = db.query(Case).filter(Case.status == "published")
+        if secs:
+            try:
+                sec_filters = [Case.title.ilike(f"%{s}%") for s in secs[:3]]
+                retrieved_cases = query.filter(or_(*sec_filters)).limit(5).all()
+            except Exception:
+                retrieved_cases = []
+
+    if not retrieved_cases:
+        retrieved_cases = db.query(Case).filter(Case.status == "published").order_by(Case.year.desc()).limit(5).all()
 
     cases_data = [
         {
             "id": c.id,
             "title": c.title,
+            "case_no": c.case_no,
             "court": c.court,
             "year": c.year,
             "section_tags": c.section_tags,
             "outcome": c.outcome,
-            "summary": c.summary,
+            "summary": c.summary or c.facts or "",
+            "ratio_decidendi": c.ratio_decidendi or "",
         }
-        for c in published_cases
+        for c in retrieved_cases
     ]
 
     analysis = local_llm_service.analyze_draft_gap(
@@ -77,6 +105,7 @@ def analyze_draft_petition(
         missing_arguments=analysis.get("missing_arguments", []),
         suggested_sections=analysis.get("suggested_sections", []),
         citation_suggestions=analysis.get("citation_suggestions", []),
+        model_source=analysis.get("model_source", "local_llm"),
     )
 
 
