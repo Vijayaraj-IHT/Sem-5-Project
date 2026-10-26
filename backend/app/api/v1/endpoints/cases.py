@@ -362,14 +362,13 @@ async def upload_case_auto(
 
 
 @router.get("/", response_model=List[CaseResponse])
-
 def list_cases(
     court: Optional[str] = Query(None),
     year: Optional[int] = Query(None),
     status_filter: Optional[str] = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_optional_current_user),
     db: Session = Depends(get_db),
 ):
     """
@@ -379,7 +378,7 @@ def list_cases(
     """
     query = db.query(Case)
 
-    if current_user.role not in ["court_staff", "senior_staff", "staff"]:
+    if not current_user or current_user.role not in ["court_staff", "senior_staff", "staff"]:
         query = query.filter(Case.status == "published")
     elif status_filter:
         query = query.filter(Case.status == status_filter)
@@ -464,7 +463,7 @@ def list_landmark_precedents(
 def get_case(
     case_id: str,
     request: Request,
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_optional_current_user),
     db: Session = Depends(get_db),
 ):
     """Retrieves metadata of a specific case."""
@@ -475,7 +474,7 @@ def get_case(
             detail="Case record not found.",
         )
 
-    if case.status != "published" and current_user.role not in ["court_staff", "senior_staff", "staff"]:
+    if case.status != "published" and (not current_user or current_user.role not in ["court_staff", "senior_staff", "staff"]):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="This case is pending staff approval and cannot be viewed yet.",
@@ -484,7 +483,7 @@ def get_case(
     log_audit_event(
         db=db,
         action="VIEW_METADATA",
-        user_id=current_user.id,
+        user_id=current_user.id if current_user else None,
         case_id=case.id,
         details=f"Viewed case metadata for {case.case_no}",
         ip_address=request.client.host if request.client else None,
@@ -649,7 +648,7 @@ def re_extract_case(
 def view_case_document(
     case_id: str,
     request: Request,
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_optional_current_user),
     db: Session = Depends(get_db),
 ):
     """
@@ -661,7 +660,7 @@ def view_case_document(
     if not case:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case record not found.")
 
-    if case.status != "published" and current_user.role not in ["court_staff", "senior_staff"]:
+    if case.status != "published" and (not current_user or current_user.role not in ["court_staff", "senior_staff"]):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Document access restricted.")
 
     integrity_status = "verified"
@@ -678,7 +677,7 @@ def view_case_document(
             log_audit_event(
                 db=db,
                 action="INTEGRITY_VIOLATION",
-                user_id=current_user.id,
+                user_id=current_user.id if current_user else None,
                 case_id=case.id,
                 details=f"CRITICAL: SHA-256 hash mismatch detected during document access! Case quarantined.",
                 ip_address=request.client.host if request.client else None,
@@ -694,7 +693,7 @@ def view_case_document(
     log_audit_event(
         db=db,
         action="VIEW_DOCUMENT",
-        user_id=current_user.id,
+        user_id=current_user.id if current_user else None,
         case_id=case.id,
         details=f"Document viewed with status: {integrity_status}",
         ip_address=request.client.host if request.client else None,
@@ -710,7 +709,7 @@ def view_case_document(
 def verify_case_integrity(
     case_id: str,
     request: Request,
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_optional_current_user),
     db: Session = Depends(get_db),
 ):
     """
@@ -735,7 +734,7 @@ def verify_case_integrity(
     log_audit_event(
         db=db,
         action="VERIFY_INTEGRITY",
-        user_id=current_user.id,
+        user_id=current_user.id if current_user else None,
         case_id=case.id,
         details=f"Cryptographic check result: {badge}",
         ip_address=request.client.host if request.client else None,
@@ -757,7 +756,7 @@ def verify_case_integrity(
 def download_case(
     case_id: str,
     request: Request,
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_optional_current_user),
     db: Session = Depends(get_db),
 ):
     """
@@ -769,7 +768,7 @@ def download_case(
     if not case:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case record not found.")
 
-    if case.status != "published" and current_user.role not in ["court_staff", "senior_staff", "staff"]:
+    if case.status != "published" and (not current_user or current_user.role not in ["court_staff", "senior_staff", "staff"]):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access restricted: This case record is not yet published.",
@@ -782,7 +781,7 @@ def download_case(
     log_audit_event(
         db=db,
         action="DOWNLOAD_DOCUMENT",
-        user_id=current_user.id,
+        user_id=current_user.id if current_user else None,
         case_id=case.id,
         details=f"Downloaded case record: {case.case_no}",
         ip_address=request.client.host if request.client else None,

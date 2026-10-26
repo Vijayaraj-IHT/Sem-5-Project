@@ -120,11 +120,16 @@ class CaseStatusUpdate(BaseModel):
 
 class CaseMetadataUpdate(BaseModel):
     case_no: Optional[str] = None
+    cnr_number: Optional[str] = None
     title: Optional[str] = None
     court: Optional[str] = None
     year: Optional[int] = None
     judge: Optional[str] = None
     parties: Optional[str] = None
+    petitioner: Optional[str] = None
+    respondent: Optional[str] = None
+    petitioner_counsel: Optional[str] = None
+    respondent_counsel: Optional[str] = None
     disposition: Optional[str] = None
     outcome: Optional[str] = None
     precedential_status: Optional[str] = None
@@ -135,5 +140,6 @@ class CaseMetadataUpdate(BaseModel):
     section_tags: Optional[List[str]] = None
     keyword_tags: Optional[List[str]] = None
     source_url: Optional[str] = None
+    comparison_profile: Optional[Dict[str, Any]] = None
 
 
